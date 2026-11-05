@@ -100,7 +100,7 @@ There is no multi-agent chain. Roles are **stages that produce artifacts**; the 
 
 | PR | Contains | Gate |
 |---|---|---|
-| **Spec PR** | The four OpenSpec artifacts and the epic brief; no code | G1, owner approves |
+| **Spec PR** | The four OpenSpec artifacts, and the epic brief if it has not already landed (E1's brief merged earlier, in the baseline PR); no code | G1, owner approves |
 | **Implementation PRs** | A group of related tasks each (roughly 2 to 5 tasks, about 400 lines); commit per task | G2, G3, G5 |
 | **Last implementation PR** | Final tasks plus the archive (specs synced) | G2 to G5, with G4 passed first |
 
@@ -184,11 +184,11 @@ The owner approves G1 and G5. Between them the agent works task by task. Autonom
 
 ## 14. Epics
 
-Epics, their order, dependencies, and exit criteria are owned by the PRD: see `prd-coach-app.md` §7.1. This document defines only how an epic is run. Current state: E1 is next, with its brief drafted in `docs/epics/E1-onboarding-first-plan.md` and waiting for G0; E2 and E3 each need an exploration spike first (X1 Garmin access, X2 load definition). Spike notes go in `docs/spikes/`; epic briefs go in `docs/epics/`.
+Epics, their order, dependencies, and exit criteria are owned by the PRD: see `prd-coach-app.md` §7.1. This document defines only how an epic is run. Current state: E1 is next, with its brief drafted in `docs/epics/E1-onboarding-first-plan.md` and waiting for G0; E2, E3, and E8 each need an exploration spike first (X1 Garmin access, X2 load definition, X3 reading a real whiteboard). Spike notes go in `docs/spikes/`; epic briefs go in `docs/epics/`.
 
 ## 15. Build order for the harness itself
 
-1. **Bootstrap PR (not an OpenSpec change):** merge the `@claude` workflow (PR #1); `openspec init` with a Solo `config.yaml` (greenfield context, task rules); switch OpenSpec to the expanded profile; CI workflow with one required check `ci-complete`; branch protection; `.claude/settings.json` with hooks and deny rules; the two reviewer agents; `scripts/phase` and `scripts/trace`; `docs/.phase`. CI also gets secret scanning and a dependency audit.
+1. **Bootstrap PR (not an OpenSpec change):** the `@claude` workflow (PR #1) is merged ✅; `openspec init` with a Solo `config.yaml` (greenfield context, task rules); switch OpenSpec to the expanded profile; CI workflow with one required check `ci-complete`; branch protection; `.claude/settings.json` with hooks and deny rules; the two reviewer agents; `scripts/phase` and `scripts/trace`; `docs/.phase`. CI also gets secret scanning and a dependency audit.
    - During E1: Playwright E2E with a fake coach, and the deployed smoke test. The golden-set runner arrives with E4; a small first set (the pasted-plan check) can start in E1.
 2. **E1 epic brief** (drafted), passes G0, then the Spec PR, then implementation PRs.
 3. Update the status legend in this file as each piece lands.
@@ -196,7 +196,7 @@ Epics, their order, dependencies, and exit criteria are owned by the PRD: see `p
 ## 16. Known unknowns, to test in E1
 
 - How `/opsx:sync` behaves on the expanded path, and what `/opsx:verify` actually checks.
-- Whether the Claude GitHub Action can post review comments with its current permissions, and whether `@claude` mentions made by the agent itself trigger it.
+- The Claude GitHub Action can post review comments with its current permissions (confirmed on PR #2, where it reviewed the baseline). Still to test: whether `@claude` mentions made by the agent itself trigger it.
 - Whether `pg-mem` supports what the store needs.
 - Whether the scope-freeze hook blocks legitimate edits too often.
 

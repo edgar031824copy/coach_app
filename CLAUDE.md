@@ -2,7 +2,7 @@
 
 A coach for hybrid athletes (running + CrossFit). It builds a combined training plan from an onboarding intake and, later, Garmin data, then **suggests** changes with a plain-language reason. It never applies a change on its own.
 
-- Product source of truth: `prd-coach-app.md` (v1.4). Epics, their order, and exit criteria are in PRD §7.1. Read it before defining any epic.
+- Product source of truth: `prd-coach-app.md`. Epics, their order, and exit criteria are in PRD §7.1. Read it before defining any epic.
 - Full development workflow (flow, gates, hooks, reviewers): `docs/workflow.md`. This file is the short version. Read that file when defining an epic, opening a Spec PR, running a gate, or changing the harness; do not load it for ordinary coding tasks.
 
 ## Status

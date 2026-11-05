@@ -26,14 +26,14 @@ Scenario ids follow `<capability>/<requirement>/<scenario>` and will be tagged i
 **R2. Plan generation without a pasted plan**
 - WHEN the onboarding is valid THEN a 7-day plan is returned with one entry per day.
 - WHEN a day has both disciplines THEN `combinedLoadNote` is non-empty.
-- WHEN a session appears THEN it is on a day the athlete declared available for that discipline.
+- WHEN a session has `source: "coach"` THEN it is on a day the athlete declared available for that discipline. (Sessions from a pasted running plan are exempt: they fall on whatever days that plan says; see R3.)
 - WHEN the coach errors, times out (30 s), or returns something invalid THEN no plan is saved, an error with a retry option is shown, and nothing partial exists.
 
 **R3. Pasted running plan kept as is** (PRD Principle 5)
 - WHEN a running plan is pasted THEN the plan's running sessions are exactly the sessions the coach reported reading (`understoodRunning`), unchanged, with `source: "athlete"`; the coach adds only CrossFit sessions, only on declared CrossFit days.
 - WHEN the coach alters, drops, or adds a running session relative to `understoodRunning` THEN the response is rejected as invalid.
-- WHEN `understoodRunning` is empty THEN the response is rejected.
-- WHEN the pasted text contains an instruction aimed at the model THEN it is still treated as data, and a response that obeys it is rejected.
+- WHEN a running plan was pasted and `understoodRunning` is empty THEN the response is rejected. WHEN no running plan was pasted THEN `understoodRunning` is empty and the plan contains no `source: "athlete"` sessions.
+- WHEN the pasted text contains an instruction aimed at the model THEN it is still sent as delimited data, and any response that breaks the R3 rules (a running session altered, dropped, or added, or a coach session on an undeclared day) is rejected, whatever the input says.
 - WHEN the plan is shown THEN sessions with `source: "athlete"` are labeled "from your plan".
 
 **R4. Persistence and reload**
@@ -82,7 +82,7 @@ CoachResponse = { understoodRunning: { day: Day, description: string, intensity:
 
 - Vitest in `server/` and `client/`; supertest for the API; `pg-mem` for the store; a **fake coach client** everywhere, so no test calls the real API.
 - Every scenario above gets a test tagged `@spec(<id>)`.
-- Required unit cases include: valid onboarding with both disciplines on one day; missing goal; no day; over-length paste; a model response with 6 days; a session on an unavailable day; a response that alters, drops, or adds a running session; a paste that contains an instruction aimed at the model; a network failure in the client; the cap reached and reset.
+- Required unit cases include: valid onboarding with both disciplines on one day; missing goal; no day; over-length paste; a model response with 6 days; a session on an unavailable day; a response that alters, drops, or adds a running session; a paste that contains an instruction aimed at the model, with a fake coach that obeys it and breaks the R3 rules; a network failure in the client; the cap reached and reset.
 - **AI behavior check for E1** (PRD §8.3, check 6): with a pasted running plan, its running sessions come back unchanged. One manual run against the real API with the author's own running plan confirms the model reads a messy plan correctly.
 
 ## 7. Risks (PRD §11)

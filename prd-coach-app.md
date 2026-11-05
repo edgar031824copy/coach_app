@@ -5,8 +5,7 @@
 **Status:** Draft, pre-validation phase
 **Repo:** `coach_app` (this document is the source of truth for what to build and why)
 
-**Changes in 1.5 (validation):** the fixed "4-week trial" became a validation checkpoint measured in rated suggestions (20, or 6 weeks, whichever comes first), with an offline replay of the author's history, blind rating, an outside rater, and thresholds decided in advance (§9, §10, E6).
-**Changes in 1.5:** added epic E8 (daily WOD check from a photo or pasted text) and spike X3 (can the model read a real whiteboard?), promoting C5 and C7; added risk R12 (the generated CrossFit plan may not match the box's real programming); set the deployment rule (E1 local, deploy as its last task, then every merged epic deploys through GitHub Actions after CI) and an access-gate precondition before E2.
+**Changes in 1.5:** added epic E8 (daily WOD check from a photo or pasted text) and spike X3 (can the model read a real whiteboard?), promoting C5 and C7; added risk R12 (the generated CrossFit plan may not match the box's real programming); set the deployment rule (E1 local, deploy as its last task, then every merged epic deploys through GitHub Actions after CI) and an access-gate precondition before E2. The fixed "4-week trial" also became a validation checkpoint: the fixed "4-week trial" became a validation checkpoint measured in rated suggestions (20, or 6 weeks, whichever comes first), with an offline replay of the author's history, blind rating, an outside rater, and thresholds decided in advance (§9, §10, E6).
 **Changes in 1.4:** added the roadmap and epics (§7.1): seven epics with outcomes, dependencies and exit criteria, two exploration spikes, and a map from every Must/Should item to one epic; §14 now names the first epic (E1). The Estación 7 course framing was dropped; it was an example, not a constraint.
 **Changes in 1.3:** recorded the cost model and the path from one athlete to accounts and credits: athlete accounts with social login (S4), per-athlete usage quotas (S5), bring-your-own-key (C8); added risk R11 (open endpoint can spend API credits) and two open questions. The first slice stays without login.
 **Changes in 1.2:** added Principle 6 (know when not to coach); use cases with acceptance criteria (§6); AI behavior and evaluation plan (§8); metrics rebuilt with north star, baselines, and timeframes (§9); risks and mitigations (§11). Removed "Edge" from the competitor list in §2 (it had no entry or source in the appendix).
@@ -151,9 +150,9 @@ MoSCoW sorts features into Must have, Should have, Could have, and Won't have (f
 | C2 | Apple Watch / non-Garmin data source |
 | C3 | Subscription billing or paid credits (model C); deferred until the coach is validated (W2) |
 | C4 | Box/gym-level dashboard for a human coach to oversee multiple athletes |
-| C5 | Paste the box's CrossFit programming (the other half of the athlete's week) so the coach plans around both |
+| C5 | Paste the box's CrossFit programming (the other half of the athlete's week) so the coach plans around both. The daily-workout part is delivered by E8; pasting the weekly programming is not scheduled |
 | C6 | Suggest changes to the athlete's own running plan (accept/modify/ignore), instead of only keeping it as is |
-| C7 | Upload a plan as a file (PDF, spreadsheet, image), and a confirm-or-correct step on how the plan was read |
+| C7 | Upload a running plan as a file (PDF, spreadsheet, image), and a confirm-or-correct step on how a plan was read. The image reading and confirm-or-correct step for the daily workout are delivered by E8; file upload and a confirm step for a pasted running plan are not scheduled |
 | C8 | Bring your own API key (model B): an athlete supplies their own Anthropic key and pays Anthropic directly. Needs encrypted key storage; heavy friction for non-technical athletes, so likely an option for technical users only |
 
 ### Won't Have (for now)
@@ -186,7 +185,7 @@ An **epic** is a coherent capability that delivers a user-visible outcome and is
 
 **Scope and exit criteria** (an epic is done only when all of its exit criteria pass; every scenario also needs a test, per `docs/workflow.md`):
 
-- **E1.** Scope: onboarding form, plan generation, optional pasted running plan kept as is, saved plan, and a first deploy as the last task (a GitHub Actions workflow that deploys only after CI passes; E1 itself is built and run locally). Exit: UC1 acceptance criteria pass; a plan is produced with zero Garmin data; a pasted running plan comes back unchanged (§8.3 check 6); a coach failure never leaves a partial plan; the daily cap on coach calls works; the app runs on its deployed URLs. Risks: R5, R7, R9, R11.
+- **E1.** Scope: onboarding form, plan generation, optional pasted running plan kept as is, saved plan, and a first deploy as the last task (a GitHub Actions workflow that deploys only after CI passes; E1 itself is built and run locally). Exit: UC1 acceptance criteria pass; a plan is produced with zero Garmin data; a pasted running plan comes back unchanged (§8.3 check 6); a coach failure never leaves a partial plan; the daily cap on coach calls works; the app runs on its deployed URLs. Risks: R5, R6, R7, R9, R11.
 - **E2.** Precondition: before real Garmin data is stored on the deployed app, an access gate exists (a small owner-password change, or E7 brought forward); decide this before E2 starts. Scope: connect the author's Garmin account and sync activities and recovery metrics. Exit: the author's data is synced and stored; credentials or tokens are never exposed to the client or the repo; missing or stale data degrades gracefully (Principle 3); how much history to import is set after X1. Risks: R3, R5.
 - **E3.** Scope: no LLM. Daily load per discipline computed from Garmin data and planned sessions, with CrossFit load defined by X2; the threshold rule. Exit: with fixture data, the load numbers are deterministic and tested; the rule flags every scripted overload scenario and stays quiet on the no-overload ones. Risk: R4.
 - **E4.** Scope: suggestion generation with plain-language reasons, accept/modify/ignore, pain-report behavior, the evaluation set from §8.3. Exit: UC2, UC3, UC4 acceptance criteria pass; §8.3 checks 1 to 5 meet their thresholds; no change is ever applied without an athlete action. Risks: R1, R6, R8.
@@ -209,8 +208,8 @@ An **epic** is a coherent capability that delivers a user-visible outcome and is
 | M2, M3 | E1 | | S2 | E5 |
 | M4 | E3 | | S3 | E6 |
 | M5 | E4 | | S4, S5 | E7 |
-| M6 | E5 | | C5, C7 | E8 |
-| | | | C1 to C4, C6, C8 | not scheduled |
+| M6 | E5 | | C5 (daily workout part), C7 (image reading and confirm step for the workout) | E8 |
+| | | | C1 to C4, C6, C8; C5 weekly programming; C7 file upload and running-plan confirm step | not scheduled |
 
 ---
 

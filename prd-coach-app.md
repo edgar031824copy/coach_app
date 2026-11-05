@@ -1,15 +1,11 @@
 # PRD · Virtual Hybrid Coach
 
 **Version:** 1.5
-**Date:** 2026-11-01
+**Date:** 2026-11-05 (latest change; see the changelog)
 **Status:** Draft, pre-validation phase
 **Repo:** `coach_app` (this document is the source of truth for what to build and why)
 
-**Changes in 1.5:** added epic E8 (daily WOD check from a photo or pasted text) and spike X3 (can the model read a real whiteboard?), promoting C5 and C7; added risk R12 (the generated CrossFit plan may not match the box's real programming); set the deployment rule (E1 local, deploy as its last task, then every merged epic deploys through GitHub Actions after CI) and an access-gate precondition before E2. The fixed "4-week trial" became a validation checkpoint measured in rated suggestions (20, or 6 weeks, whichever comes first), with an offline replay of the author's history, blind rating, an outside rater, and thresholds decided in advance (§9, §10, E6).
-**Changes in 1.4:** added the roadmap and epics (§7.1): seven epics with outcomes, dependencies and exit criteria, two exploration spikes, and a map from every Must/Should item to one epic; §14 now names the first epic (E1). The Estación 7 course framing was dropped; it was an example, not a constraint.
-**Changes in 1.3:** recorded the cost model and the path from one athlete to accounts and credits: athlete accounts with social login (S4), per-athlete usage quotas (S5), bring-your-own-key (C8); added risk R11 (open endpoint can spend API credits) and two open questions. The first slice stays without login.
-**Changes in 1.2:** added Principle 6 (know when not to coach); use cases with acceptance criteria (§6); AI behavior and evaluation plan (§8); metrics rebuilt with north star, baselines, and timeframes (§9); risks and mitigations (§11). Removed "Edge" from the competitor list in §2 (it had no entry or source in the appendix).
-**Changes in 1.1:** Principle 5 (respect the athlete's existing plan); onboarding and M3 accept an optional existing running plan; stack and deployment decided (§13); first slice defined (§14).
+**Latest change (1.5):** added epic E8 (daily WOD check) and spike X3, risk R12, the deployment rule, and a validation checkpoint measured in rated suggestions. Full history: `docs/prd-changelog.md`. Change rules: `docs/workflow.md` section 7.2. Decisions and their reasons: `docs/decisions/`.
 
 **Legend:** 🔶 = assumption (plausible, not yet validated). 🔵 = open question (unknown, needs discovery).
 
@@ -320,17 +316,20 @@ Opening to other athletes (E7) waits for this checkpoint.
 
 ---
 
-## 13. Technical Decisions (as of 1.1)
+## 13. Technical Decisions (as of 1.5)
 
-| Layer | Choice | Notes |
+The technical choices, the options considered, and the reasons are recorded as decision records in `docs/decisions/`. This is the summary.
+
+| Area | Choice | Record |
 |---|---|---|
-| Frontend | React + TypeScript, built with Vite | Deployed on Vercel (Hobby plan: non-commercial use only; revisit if monetized) |
-| Backend | Node + Express + TypeScript | Deployed on Render (free web service: spins down after 15 minutes idle, about a minute to wake) |
-| Database | PostgreSQL on Supabase (free plan) | Used as plain Postgres via `DATABASE_URL`; free projects pause after a week idle. Render's own free Postgres is avoided: it expires after 30 days |
-| Coach | Anthropic SDK, model `claude-sonnet-5-5` | Server-side only; output validated against a schema before anything is saved |
-| Tests | Vitest in both packages; supertest for the API; `pg-mem` for the store | Tests never call the real API |
+| Stack | React + TypeScript + Vite client; Node + Express + TypeScript server; PostgreSQL; Anthropic SDK (`claude-sonnet-5-5`), server-side only; Vitest, supertest, `pg-mem` | ADR 0005 |
+| Hosting | Vercel (client), Render (server), Supabase (database) | ADR 0006 |
+| Deployment | E1 built locally; GitHub Actions deploys after CI on every merge to `master` | ADR 0004 |
+| Garmin data | The unofficial library with the author's own credentials; gated before other athletes (R3) | ADR 0002 |
+| Login and cost | No login in E1; a daily cap on coach calls; accounts and quotas later (E7) | ADR 0003 |
+| Workflow | OpenSpec expanded path with a thin harness | ADR 0001 |
 
-Free-tier limits were read from the providers' docs on 2026-11-01 and change often; re-check before relying on them. **Deployment:** E1 is built locally; its last task creates a GitHub Actions workflow that, after a merge to `master` and a green CI, migrates the database, deploys the server and the client, and runs a smoke test. The providers' own auto-deploy is turned off. Every later epic deploys the same way. **Decision (Garmin data source):** M1 will use the unofficial `garmin-connect` npm package, as in the author's previous app where it worked, with the author's own Garmin credentials in environment variables only. This is accepted for the personal trial; moving to other athletes is gated by R3 (check Garmin's terms and official options, and no stored passwords of other athletes without a reviewed design). Garmin integration (M1) will reuse patterns from the author's existing `apps/garmin-training` app (unofficial `garmin-connect` library, email/password login kept in a cached in-memory client, activities fetched by date, heart-rate zones from an undocumented endpoint), but this is a separate repo and not an extension of it.
+Free-tier limits come from the providers' own documentation, read on 2026-11-01; they change often, so re-check before relying on them (ADR 0006).
 
 ## 14. First Epic
 

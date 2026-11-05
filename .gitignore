@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# Environment variables and secrets (examples stay tracked)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test and E2E artifacts
+playwright-report/
+test-results/
+blob-report/
+.playwright-mcp/
+evals/results/
+
+# Deploy tooling
+.vercel/
+
+# Claude Code: personal, machine-local files (shared .claude/settings.json stays tracked)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Temporary files
+tmp/
+*.tmp

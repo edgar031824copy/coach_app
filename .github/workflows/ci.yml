@@ -1,0 +1,68 @@
+name: CI
+
+# One required check for branch protection: `ci-complete`.
+# Jobs that do not apply yet (no package.json) are skipped; a skipped job counts as a pass,
+# a failed or cancelled job fails ci-complete. Typecheck, lint and tests are added by E1's scaffolding tasks.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Node projects
+        id: detect
+        run: |
+          if [ -n "$(find . -name package.json -not -path '*/node_modules/*' -print -quit)" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No package.json yet, dependency audit skipped."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.found == 'true'
+        with:
+          node-version: 22
+      - name: npm audit (high and critical only)
+        if: steps.detect.outputs.found == 'true'
+        run: |
+          set -e
+          find . -name package-lock.json -not -path '*/node_modules/*' | while read -r lock; do
+            dir=$(dirname "$lock")
+            echo "Auditing $dir"
+            (cd "$dir" && npm audit --audit-level=high)
+          done
+
+  ci-complete:
+    if: always()
+    needs: [secret-scan, dependency-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every needed job to succeed or be skipped
+        run: |
+          echo '${{ toJSON(needs) }}'
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] || [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "A required job failed or was cancelled."
+            exit 1
+          fi

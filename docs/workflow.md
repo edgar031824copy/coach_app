@@ -115,6 +115,25 @@ Branch names: `spec/<change>` and `feat/<change>-<n>`. Squash-merge into `master
 - **No staging environment.** Local development, CI with a fake coach, and one production environment.
 - Before real Garmin data is stored on the deployed app (E2), an access gate must exist (PRD §7.1, E2 precondition).
 
+### 7.2 Change control for the project's own documents
+
+| Document | Rule |
+|---|---|
+| **PRD** (`prd-coach-app.md`) | A living document, edited only through a PR. Bump the version only when scope, roadmap, principles, or risks change (not for typos), and add a dated entry to `docs/prd-changelog.md` (Added, Changed, Removed, with the reason). A new epic or a changed exit criterion is a roadmap change, in its own small PR. Once an epic's design is approved (G1), that epic's exit criteria are frozen: changing them needs an explicit amendment note and the owner's approval |
+| **This file and `CLAUDE.md`** | Edited only through a PR labeled `process`, normally **between epics** (a short retro), not mid-epic unless something blocks work. Hooks and CI are the real rules; editing the text never changes enforcement by itself |
+| **Decision records** (`docs/decisions/`) | One short file per significant decision. Immutable once accepted; if the decision changes, write a new record that supersedes the old one |
+| **Approved and archived changes** | Frozen (see `CLAUDE.md`, rule 2) |
+
+History lives in three places: git (everything), the PRD changelog (`docs/prd-changelog.md`, a dated entry per version), and the decision records (the reasons).
+
+**When to write a decision record (ADR):**
+- When a decision is hard or costly to reverse, or when several reasonable options carry real trade-offs. Write it **at the time of the decision**, not afterwards.
+- One decision per record, with the alternatives considered and the costs, not only the benefits.
+- Triggers in this workflow: an approved design (G1) that makes a project-wide choice, the result of a spike (X1, X2, X3), and a change to this process.
+- If a decision made inside a change's `design.md` affects more than that change, promote it to an ADR.
+- An ADR starts as **Proposed**. Only the owner moves it to **Accepted**; the AI may draft and widen the options, but the owner makes and owns the call.
+- The PRD and other documents link to the ADR instead of repeating it.
+
 ## 8. Test traceability
 
 This replaces a hand-maintained feature list with something derived, so there is one source of truth.

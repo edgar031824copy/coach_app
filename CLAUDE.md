@@ -50,7 +50,7 @@ The owner switches between auto mode and manual approval. In either mode, never 
 
 ## Memory and state
 
-Start each task from `docs/.phase` and the active change, not from chat history; `/clear` between tasks (token rules: `docs/workflow.md` §17). No separate memory files. What is true now: `openspec/specs/`. Why and how: the change folder. Where we are: `docs/.phase`. Stable rules and learnings: this file (add lessons under a "Learnings" heading as they appear).
+Start each task from `docs/.phase` and the active change, not from chat history; `/clear` between tasks (token rules: `docs/workflow.md` §17). No separate memory files. Why a decision was made: `docs/decisions/` (immutable once accepted; change rules in `docs/workflow.md` §7.2). What is true now: `openspec/specs/`. Why and how: the change folder. Where we are: `docs/.phase`. Stable rules and learnings: this file (add lessons under a "Learnings" heading as they appear).
 
 ## Learnings
 

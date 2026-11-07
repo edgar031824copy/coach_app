@@ -34,7 +34,7 @@ Scenario ids follow `<capability>/<requirement>/<scenario>` and will be tagged i
 - WHEN the coach response does not have exactly 7 distinct days (mon to sun) THEN it is rejected as invalid.
 - WHEN a day has both disciplines THEN `combinedLoadNote` is non-empty.
 - WHEN a session has `source: "coach"` THEN it is on a day the athlete declared available for that discipline. (Sessions from a pasted running plan are exempt: they fall on the days that plan allows; see R3.)
-- WHEN the athlete gave `weeklyTraining` and there is no pasted plan THEN each discipline's weekly session count in the plan is at most the larger of 1.3 times the stated count and the stated count plus 2 🔶, and running km, when given, follows the same limit 🔶.
+- WHEN the athlete gave `weeklyTraining` and there is no pasted plan THEN each discipline's weekly session count in the plan is at most the larger of 1.3 times the stated count and the stated count plus 2 🔶. Running km is sent to the coach as input only: km volume is guided by the prompt and checked by the evaluation scenarios, not by the validator.
 - WHEN the athlete gave `targetEvent` THEN it is sent to the coach, which may mention in a recommendation how many weeks remain; it adds no other rule.
 - WHEN the coach errors, times out (30 s 🔶), or returns something invalid THEN no plan is saved, an error with a retry option is shown, and nothing partial exists. A retry counts toward the daily cap (R5).
 
@@ -53,7 +53,7 @@ Scenario ids follow `<capability>/<requirement>/<scenario>` and will be tagged i
 - WHEN a plan passes validation THEN it is saved together with the onboarding it was made from; WHEN it does not THEN nothing is saved.
 - WHEN the page is reloaded and a plan exists THEN the same plan is shown with no new coach call; WHEN none exists THEN `GET /api/plan` returns `null`.
 - WHEN a plan is shown THEN the 7 days appear in order mon to sun, each with its sessions and, when present, the combined-load note; a day with no sessions is shown as a rest day. WHEN the plan came from a pasted plan THEN the week number is shown.
-- WHEN a plan exists and the athlete presses "Plan next week" THEN the form is pre-filled from the saved onboarding with `pastedPlanWeek` plus 1 and the athlete can edit it; submitting goes through R1 to R5 like any other onboarding (one coach call, counted toward the cap), and nothing changes until the athlete submits.
+- WHEN a plan exists and the athlete presses "Plan next week" THEN the form is pre-filled from the saved onboarding with `pastedPlanWeek` plus 1 and the athlete can edit it; submitting goes through R1 to R5 like any other onboarding (one coach call, counted toward the cap), and nothing changes until the athlete submits. WHEN there is no pasted plan THEN `pastedPlanWeek` stays null.
 - WHEN the athlete submits the onboarding again THEN a new plan is generated and saved, and the latest plan is the one shown (older plans stay in the table, not shown). This is also how the author starts over.
 
 **R5. Cost protection** (there is no login)
@@ -64,20 +64,21 @@ Scenario ids follow `<capability>/<requirement>/<scenario>` and will be tagged i
 
 **R6. Deployment** (last task of the epic; E1 is built and run locally until then)
 - WHEN a PR merges to `master` and CI is green THEN a GitHub Actions workflow runs in this order: migrate the database, deploy the server, deploy the client, run a smoke test against the live URLs. The providers' own auto-deploy is disabled, and a red CI never deploys.
-- WHEN the migration or the smoke test fails THEN the workflow stops, the client is not deployed (or, after the server deploy, the failure is reported on the commit).
+- WHEN the migration fails THEN nothing is deployed; WHEN the server deploy fails THEN the client is not deployed; WHEN the smoke test fails THEN the failure is reported on the commit (no automatic rollback in E1).
 - WHEN deployed THEN `GET /health` returns `{"status":"ok"}` and the full flow works from the live client URL.
-- WHEN the server has been idle and a request has had no response after 3 s 🔶 THEN the client shows a "waking up the coach" state, and its request timeout exceeds the coach's 30 s 🔶.
+- WHEN the server has been idle and a request has had no response after 3 s 🔶 THEN the client shows a "waking up the coach" state, and its request timeout exceeds the time a cold server takes to wake plus the coach's own timeout (the value is set in `design.md`).
 - WHEN built THEN no secret appears in the repo or the client bundle; CORS allows only the client origin.
 
 **R7. Pain and injury safety** (PRD Principle 6, UC4; decided at G0)
 - The coach decides whether `injuries` (or any other text field) reports a current pain, symptoms, or an injury, and reports it as `painReported: true` in its response. Text that is ambiguous or mixes past and current issues (for example "old knee issue, sore today") counts as current.
 - WHEN the coach reports `painReported: true` THEN `safetyNote` is non-null: it says plainly that the coach is not a clinician, does not diagnose or name a likely injury, and recommends seeing a qualified professional; the plan does not propose training through the pain; and, when a running plan was pasted, it says those sessions are the athlete's own plan and should be checked with the professional. A response with `painReported: true` and a null `safetyNote` is rejected as invalid (tested with the fake coach).
-- WHEN `painReported` is false THEN `safetyNote` is null.
+- WHEN the coach reports `painReported: true` THEN any coach-added session is limited to rest or reduced load (PRD UC4); this is a prompt rule checked by evaluation scenarios 5 and 6, since the athlete's own pasted sessions stay unchanged (R3).
+- WHEN `painReported` is false THEN `safetyNote` is null; a response with `painReported: false` and a non-null `safetyNote` is rejected as invalid (tested with the fake coach).
 - *Prompt requirement, not a runtime check:* the coach must not diagnose or name a likely injury, and must not propose training through pain. This is verified by the evaluation scenarios (§6), which run locally against the real model.
 
 ## 4. Out of scope
 
-Garmin (E2); load model, suggestions, plan view with history, and validation-checkpoint logging (E3 to E6); login, multiple athletes, per-athlete quotas, bring-your-own key, billing (E7 and later); changing or adapting the athlete's pasted plan; adjusting a plan from actual training load; pasting the box's CrossFit programming; file upload (the paste is text, for example copied from a spreadsheet); a confirm-or-correct step on how the plan was read; plans longer than one week, or generating weeks ahead of time or automatically; manual plan editing; regenerating the same week with feedback; weight, age, sleep, stress, and a PAR-Q screen (revisit with the load model, E3); an adaptive, model-written questionnaire (a fixed form is used).
+Garmin (E2); load model, suggestions, plan view with history, and validation-checkpoint logging (E3 to E6); login, multiple athletes, per-athlete quotas, bring-your-own key, billing (E7 and later); changing or adapting the athlete's pasted plan; adjusting a plan from actual training load; pasting the box's CrossFit programming; file upload (the paste is text, for example copied from a spreadsheet); a confirm-or-correct step on how the plan was read; plans longer than one week, or generating weeks ahead of time or automatically; manual plan editing; regenerating the same week with feedback; week-to-week progression (the coach does not see the previous week's plan); weight, age, sleep, stress, and a PAR-Q screen (revisit with the load model, E3); an adaptive, model-written questionnaire (a fixed form is used).
 
 ## 5. Design inputs (to be refined in `design.md`)
 
@@ -112,7 +113,7 @@ CoachResponse = { understoodRunning: { dayOptions: Day[], description: string }[
 
 - Vitest in `server/` and `client/`; supertest for the API; `pg-mem` for the store; a **fake coach client** everywhere, so no test calls the real API.
 - Every scenario above gets a test tagged `@spec(<id>)`.
-- Required unit cases include: valid onboarding with both disciplines on one day; missing goal; no day; invalid level, invalid or duplicate day, malformed body; over-length paste; optional fields absent and out of range; a model response with 6 days or duplicate days; a session on an unavailable day; a response that alters, drops, or adds a running session or places one outside its `dayOptions`; a paste with several weeks and flexible days; a paste that contains an instruction aimed at the model, with a fake coach that obeys it and breaks the R3 rules; `painReported: true` with a null `safetyNote`; a network failure in the client; the cap reached, reset, and two concurrent requests with one call left; a response rejected by validation counting toward the cap; "Plan next week" pre-filling `pastedPlanWeek` plus 1.
+- Required unit cases include: valid onboarding with both disciplines on one day; missing goal; no day; invalid level, invalid or duplicate day, malformed body; over-length paste; optional fields absent and out of range; a model response with 6 days or duplicate days; a session on an unavailable day; a response that alters, drops, or adds a running session or places one outside its `dayOptions`; a paste with several weeks and flexible days; a paste that contains an instruction aimed at the model, with a fake coach that obeys it and breaks the R3 rules; `painReported: true` with a null `safetyNote`, and `painReported: false` with a non-null one; a network failure in the client; the cap reached, reset, and two concurrent requests with one call left; a response rejected by validation counting toward the cap; "Plan next week" pre-filling `pastedPlanWeek` plus 1.
 - **Evaluation scenarios for E1** (PRD §8.3, run locally against the real model with the default of 1 repeat; see `docs/workflow.md` §9.2). The first three feed the golden set:
   1. A clean pasted running plan: its sessions come back unchanged (check 6, 100%).
   2. A messy pasted plan (mixed formats, abbreviations, flexible days such as "Friday/Saturday/Sunday", several weeks): the chosen week is read correctly, nothing invented or dropped. The author's own plan is the model for this case.

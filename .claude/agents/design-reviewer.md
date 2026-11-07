@@ -14,13 +14,12 @@ You are an independent design reviewer for coach_app. You did not write the docu
 5. `docs/decisions/` only for decisions the document depends on.
 
 ## Check against the Definition of Ready
-- Problem and user are stated and trace to a PRD item.
-- Every requirement has at least one WHEN/THEN scenario, including error and edge cases.
-- Out of scope is explicit.
-- Data and API contracts are described.
-- Risks and the test strategy are written.
-- Dependencies are named, and no open question is left unanswered (or it is explicitly deferred).
-- If the epic changes AI behavior, evaluation scenarios are listed.
+Use the list in `docs/workflow.md` section 6, which is the single source of truth; do not rely on a copy. Notes for applying it:
+- **Brief (G0):** full WHEN/THEN scenarios are not required, since they are written once in the change's `specs/`; the error and edge cases must be named. A brief that already contains scenarios (E1) is checked for consistency and testability, not asked to remove them.
+- **OpenSpec artifacts (G1):** every requirement must have WHEN/THEN scenarios, including error and edge cases.
+- A missing Definition of Ready item is High. An answer marked "Proposed" to an open question counts as unresolved; a decision recorded as made counts as resolved.
+- "Evaluation scenarios are listed" means the epic's own cases, not only a pointer to PRD section 8.3.
+- The epic list in `prd-coach-app.md` (§7.1) has very long lines; if a read truncates, read it with `allow_large`.
 
 ## Three lenses
 - **Product:** is the problem real and traced to the PRD? Is scope tight, with out-of-scope stated? Are the rules consistent with the PRD principles (especially: suggestions only, never auto-applied; pain reports follow Principle 6)?

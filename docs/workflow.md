@@ -82,7 +82,7 @@ There is no multi-agent chain. Roles are **stages that produce artifacts**; the 
 
 **Ready**, checked at G0, before any artifact is generated:
 - Problem and user are stated, and trace to a PRD item.
-- Every requirement has at least one WHEN/THEN scenario, including error and edge cases.
+- Every requirement is stated, with its error and edge cases named. The full WHEN/THEN scenarios are written once, in the change's `specs/` (by `/opsx:continue`), not in the brief. (E1's brief predates this rule and keeps its scenarios; once its Spec PR merges, the specs are the truth and the brief is history.)
 - Out of scope is explicit.
 - Data and API contracts are described.
 - Risks and the test strategy are written.

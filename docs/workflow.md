@@ -92,7 +92,7 @@ There is no multi-agent chain. Roles are **stages that produce artifacts**; the 
 **Done**, checked at G4:
 - Every scenario has a passing test (section 8).
 - CI is green on the final PR (including end-to-end and security checks); the code review has no open high-severity finding.
-- For AI epics, the golden-set evals meet their thresholds.
+- For AI epics, the golden-set evals meet their thresholds, and the last PR description carries the G4 evidence: eval pass rates and the comparison with `evals/baseline.json`.
 - Specs are synced, and the change is archived.
 - `docs/.phase` reads `archived`.
 
@@ -161,9 +161,11 @@ Unit tests cannot judge whether coaching advice is good. For epics that change A
 
 - **The set:** about 30 fixed scenarios (PRD §8.3) in `evals/` 🔲. Each is an input plus the properties the answer must have, not a stored sentence.
 - **Checks are code first.** Structured coach output lets code test: a suggestion exists, it cites metrics, the referral flag is set, nothing was auto-applied. A binary pass/fail AI judge (a different or stronger model, calibrated against the owner's own labels) is used only for fuzzy criteria such as "plain and sensible reason".
-- **Repeats:** each scenario runs N times (default 3 🔶) because answers vary. Safety checks (pain referral, no diagnosis, nothing auto-applied) must pass on **every** run; quality checks must pass on at least a set share of runs (default 2 of 3 🔶).
+- **Repeats:** each scenario runs N times (default 1 🔶, to keep API cost low; raise it if results prove flaky, for example to 3 with 2 of 3 for quality) because answers vary. Safety checks (pain referral, no diagnosis, nothing auto-applied) must pass on **every** run; quality checks must pass on at least a set share of runs (with N=1, the single run must pass).
 - **Baseline:** pass rates are stored in `evals/baseline.json`. After any change to the prompt or the model, rerun and compare. A safety drop, or a quality check below its threshold, blocks the change.
 - **Cost:** it calls the real model, so it runs on demand and at G4, never on every PR.
+- **Enforcement:** the evals run locally and G4 is enforced by process and the owner's review at G5; CI does not run or block on them. This is a deliberate choice for a solo project: a CI eval gate would cost setup and API credits for little gain over the owner's own review. Revisit only if the eval set grows, runs get expensive to repeat by hand, or the owner wants the measurement taken out of the agent's hands.
+- **Evidence:** the eval run uses the production model and config. The agent reports the pass rates against `evals/baseline.json` to the owner at G4.
 - **It grows:** every bad answer found in testing or the validation checkpoint becomes a new scenario.
 - The validation checkpoint (PRD §10) is separate: it judges real use over about 20 rated suggestions and compares the coach with the threshold rule.
 

@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Project: coach_app, a virtual coach for hybrid athletes (running + CrossFit).
+  Read prd-coach-app.md (epics and exit criteria in section 7.1), docs/workflow.md (process), and docs/decisions/ (decision records, ADRs).
+  Greenfield: no application code exists yet. The first change must include scaffolding tasks (the server first, ending in a passing test) before any feature task.
+  Stack: React + TypeScript + Vite client in client/; Node + Express + TypeScript server in server/; PostgreSQL through pg; Anthropic SDK on the server only; Vitest, supertest, and pg-mem for tests; Playwright for end-to-end tests.
+  One change implements one epic. Name changes coach-<name> and record the epic id in .openspec.yaml (epic: En).
+  Product rules: the coach only suggests and never applies a change on its own; it never diagnoses or gives medical advice; it never alters a running plan the athlete supplied.
+  Test rule: every spec scenario has a test tagged @spec(<capability>/<requirement>/<scenario>). Tests never call the real model; use a fake coach client.
+  Use conventional commits. Secrets live in environment variables only.
+
+rules:
+  proposal:
+    - Link the epic brief in docs/epics/ and the PRD items it covers
+    - Keep proposals under 400 words
+    - Always include a Non-goals section that matches the brief's out of scope
+  specs:
+    - Every requirement has WHEN/THEN scenarios, including error and edge cases
+    - Each scenario must be observable and testable without reading the code
+  design:
+    - State contracts (types and API shapes) explicitly
+    - Record each decision with the alternatives considered; if a decision affects more than this change, flag that it needs an ADR in docs/decisions/
+  tasks:
+    - Break tasks into chunks of at most 2 hours
+    - Each task has acceptance criteria and a test plan, and lists the scenarios it satisfies
+    - The first task scaffolds the project and ends with a passing test
+    - Group tasks so that one implementation PR holds about 2 to 5 of them
+
+operations:
+  apply:
+    guidance:
+      - Write the test first and run it before the implementation
+      - A task is done only when its tests pass, not when its box is ticked
+      - If the specs or design need to change, stop and report; that is a new change
+  archive:
+    guidance:
+      - Summarize the archive outcome and confirm every scenario has a passing test before finishing

@@ -20,7 +20,7 @@ The system SHALL return a plan with exactly seven entries, one for each of mon t
 - **THEN** it is rejected as an invalid coach response
 
 ### Requirement: At least one rest day
-The system SHALL ensure the plan has at least one day with no sessions, so a plan can have six training days and one rest day. The only exception is a pasted running plan whose own sessions already cover all seven days; the athlete's sessions are never changed to make room. Days the athlete did not declare as available are rest days unless a pasted session falls on them.
+The system SHALL ensure the plan has at least one day with no sessions, so a plan can have six training days and one rest day. The only exception is a pasted running plan whose own sessions, as placed in the plan, occupy all seven days; the athlete's sessions are never changed to make room. Days the athlete did not declare as available are rest days unless a pasted session falls on them.
 
 #### Scenario: Six training days and one rest day
 - **WHEN** the plan has sessions on six days and none on the seventh
@@ -28,6 +28,10 @@ The system SHALL ensure the plan has at least one day with no sessions, so a pla
 
 #### Scenario: No rest day is rejected
 - **WHEN** every day has a session, the athlete's own pasted sessions leave at least one day empty, and the coach filled it
+- **THEN** the response is rejected as an invalid coach response
+
+#### Scenario: Coach fills all seven days without a paste
+- **WHEN** no running plan was pasted and every day has a session
 - **THEN** the response is rejected as an invalid coach response
 
 #### Scenario: Pasted plan covers all seven days
@@ -57,7 +61,7 @@ The system SHALL give a non-empty `combinedLoadNote` to every day that has both 
 - **THEN** that day's `combinedLoadNote` is non-empty
 
 ### Requirement: Volume guard from stated weekly training
-When the athlete gave `weeklyTraining` and no running plan was pasted, the system SHALL limit each discipline's weekly session count to at most the larger of 1.3 times the stated count and the stated count plus 2 🔶. Running km is passed to the coach as input only and is not validated.
+When the athlete gave `weeklyTraining` and no running plan was pasted, the system SHALL limit each discipline's weekly session count to at most the larger of 1.3 times the stated count (rounded down) and the stated count plus 2 🔶. Running km is passed to the coach as input only and is not validated.
 
 #### Scenario: Within the limit
 - **WHEN** a discipline's planned sessions do not exceed the limit
@@ -72,7 +76,7 @@ When the athlete gave a `targetEvent`, the system SHALL include it in the reques
 
 #### Scenario: Event is sent to the coach
 - **WHEN** the onboarding has a `targetEvent`
-- **THEN** the request to the coach contains the event name and date
+- **THEN** the request to the coach contains the event name, the event date, and today's UTC date
 
 ### Requirement: Distinct failure outcomes
 The system SHALL return a distinct, observable error for each failure and SHALL save nothing when generation fails: `coach_unavailable` when the coach errors or exceeds the coach timeout (30 s 🔶; HTTP 502 🔶), and `invalid_coach_response` when the response fails validation (HTTP 422 🔶). Both SHALL offer a retry, and both count toward the daily cap. A refusal, a truncated response, or a response with the wrong shape SHALL count as an invalid coach response. When a response is both unreadable and invalid, `plan_unreadable` SHALL win.

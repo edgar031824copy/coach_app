@@ -19,7 +19,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 2. Onboarding validation
 
-- [ ] 2.1 Implement `validateOnboarding` for required answers and field rules (goal, levels, days, duplicates, empty injuries, malformed body).
+- [ ] 2.1 Implement `validateOnboarding` for required answers and field rules (goal, levels, days, duplicates, empty injuries; the malformed-body scenario is tested over HTTP in 2.3).
   - Done when: each listed scenario has a passing test; the function does no I/O.
   - Test plan: table-driven unit tests, one case per scenario.
   - Scenarios: `onboarding/required-answers/*`, `onboarding/field-validation/*`.
@@ -28,9 +28,9 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: unit tests with a fixed clock.
   - Scenarios: `onboarding/pasted-running-plan-input/*`, `onboarding/optional-context-fields/*`, `onboarding/free-text-length-limits/*`.
 - [ ] 2.3 Wire `POST /api/plan` to the validator: 400 `validation_error` with per-field messages, using a spy coach that must not be called and a cap count that must not change.
-  - Done when: an invalid body returns 400 with `fields`, the spy shows zero calls, and the count is unchanged.
+  - Done when: an invalid body returns 400 with `fields`, the spy shows zero calls, and the count is unchanged; an over-16 KB body returns 413 and an unparseable body returns 400, both with no coach call.
   - Test plan: supertest with the spy coach and an in-memory count.
-  - Scenarios: `onboarding/invalid-input-never-reaches-the-coach/*`.
+  - Scenarios: `onboarding/invalid-input-never-reaches-the-coach/*`, `onboarding/field-validation/malformed-body-is-rejected`, `onboarding/free-text-length-limits/request-body-too-large`.
 
 ## 3. Store and daily cap
 
@@ -68,11 +68,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 - [ ] 4.4 Implement the safety validators: `painReported` true needs a non-null `safetyNote`; false needs it null.
   - Done when: both rejection cases and both accept cases pass.
   - Test plan: four unit tests with fake responses.
-  - Scenarios: `safety/safety-note-when-pain-is-reported/pain-reported-with-a-note`, `.../pain-reported-without-a-note`, `.../note-without-reported-pain`.
+  - Scenarios: `safety/safety-note-when-pain-is-reported/pain-reported-with-a-note`, `safety/safety-note-when-pain-is-reported/pain-reported-without-a-note`, `safety/safety-note-when-pain-is-reported/note-without-reported-pain`.
 
 ## 5. Plan generation endpoint
 
-- [ ] 5.1 Implement the generation flow: validate onboarding, reserve a cap slot, call the coach, validate the response, save, return a `PlanRecord`; map failures to 502 `coach_unavailable`, 422 `invalid_coach_response`, 422 `plan_unreadable`, 429 `daily_limit_reached` (a refusal, truncated, or wrong-shape response is `invalid_coach_response`, and `plan_unreadable` wins when both apply); pass `targetEvent` to the coach; save nothing on failure; failed and rejected calls keep their count.
+- [ ] 5.1 Implement the generation flow: validate onboarding, reserve a cap slot, call the coach, validate the response, save, return a `PlanResponse` (a `PlanRecord` plus `remainingCallsToday`, which coach error responses also carry); map failures to 502 `coach_unavailable`, 422 `invalid_coach_response`, 422 `plan_unreadable`, 429 `daily_limit_reached` (a refusal, truncated, or wrong-shape response is `invalid_coach_response`, and `plan_unreadable` wins when both apply); pass `targetEvent` to the coach; save nothing on failure; failed and rejected calls keep their count.
   - Done when: each outcome is returned with the right status and error, and the store is empty after any failure; a thrown cap reservation or save returns 500 `server_error` with nothing saved, and a reservation made before a failed save still counts.
   - Test plan: supertest with a fake coach that succeeds, throws, times out, and returns invalid and unreadable responses.
   - Scenarios: `plan-generation/distinct-failure-outcomes/*`, `plan-generation/target-event-as-context/event-is-sent-to-the-coach`, `plan-generation/seven-day-plan/valid-onboarding-gives-seven-days`, `cost-cap/daily-cap/cap-reached`, `cost-cap/what-counts-toward-the-cap/failed-call-counts`, `cost-cap/what-counts-toward-the-cap/rejected-response-counts`, `plan-storage/save-only-valid-plans/*`.
@@ -103,7 +103,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: each listed scenario passes in a component test with fixture plans.
   - Test plan: component tests with fixtures including an empty day and a pasted-plan plan.
   - Scenarios: `plan-storage/day-by-day-view/*`, `running-plan-import/labels-and-recommendations/*`, `safety/safety-note-when-pain-is-reported/pain-reported-with-a-note` (display).
-- [ ] 6.4 Implement reload and "Plan next week", and the client messages for each error (retry for `coach_unavailable` and `invalid_coach_response`, a clear message for `plan_unreadable`, "daily limit reached" with no retry, "no retries remain today" after the last allowed call fails).
+- [ ] 6.4 Implement reload and "Plan next week", and the client messages for each error (retry for `coach_unavailable` and `invalid_coach_response`, a clear message for `plan_unreadable`, "daily limit reached" with no retry, "no retries remain today" when `remainingCallsToday` is 0 after a failed call).
   - Done when: reload shows the saved plan with no new call; "Plan next week" pre-fills week plus 1 (week 53 shows its field error) and changes nothing until submitted.
   - Test plan: component tests with a fake API for each error and for pre-fill.
   - Scenarios: `plan-storage/plan-next-week/*`, `plan-storage/reload-without-a-coach-call/reload-shows-the-same-plan`, `cost-cap/daily-cap/cap-reached` (client message), `cost-cap/last-allowed-call-fails/last-call-fails`.
@@ -131,11 +131,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 8. Deploy, verification, and archive (last PR)
 
-- [ ] 8.1 Write `.github/workflows/deploy.yml`: run after `CI` succeeds on `master`; migrate, deploy the server (create a Render deploy through its API and poll until it is live), deploy the client (Vercel, prebuilt), smoke test (`/health`, `GET /api/plan`, the client URL, a CORS check, and an invalid `POST /api/plan` that must return 400 without a coach call); stop at the first failing step and report a failed smoke test as a failed commit status. Use a `concurrency` group so deploys do not overlap, never print a response body to the log, and keep migrations backward compatible.
+- [ ] 8.1 Write `.github/workflows/deploy.yml`: run only after a `CI` run on `master` that was triggered by a push and concluded `success` (filter the `workflow_run` on branch, event, and conclusion); migrate, deploy the server (create a Render deploy through its API and poll until it is live), deploy the client (Vercel, prebuilt), smoke test (`/health`, `GET /api/plan`, the client URL, a CORS check, and an invalid `POST /api/plan` that must return 400 without a coach call); stop at the first failing step and report a failed smoke test as a failed commit status. Use a `concurrency` group so deploys do not overlap, never print a response body to the log, and keep migrations backward compatible.
   - Done when: the workflow validates (`actionlint`); the passing checks for its deploy scenarios are the recorded runs in task 8.3.
   - Test plan: `actionlint` plus a branch dry run with deploy steps disabled.
   - Scenarios: `deploy/deploy-order-behind-green-ci/red-ci-does-not-deploy`, `deploy/deploy-order-behind-green-ci/green-merge-deploys-in-order`, `deploy/failure-handling/*`, `deploy/write-path-is-live/*`.
-- [ ] 8.2 Write the owner setup checklist (`docs/deploy-setup.md`): create the Vercel, Render, and Supabase accounts, add the GitHub secrets (including the Render API key and service id), turn off provider auto-deploy, and set the Anthropic spend limit.
+- [ ] 8.2 Write the owner setup checklist (`docs/deploy-setup.md`): create the Vercel, Render, and Supabase accounts, add the GitHub secrets (including the Render API key and service id), use the Supabase pooler connection string (session mode for migrations) because the direct host is reported to be IPv6-only, turn off provider auto-deploy, and set the Anthropic spend limit.
   - Done when: the owner has completed every item and confirms it in the PR.
   - Test plan: the owner ticks each item; confirm that a push to `master` triggers no provider deploy by itself.
   - Scenarios: `deploy/deploy-order-behind-green-ci/provider-auto-deploy-is-off`.

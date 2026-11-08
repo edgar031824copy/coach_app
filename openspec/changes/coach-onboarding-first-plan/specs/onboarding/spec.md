@@ -71,10 +71,10 @@ The system SHALL accept a pasted running plan of at most 4,000 characters 🔶, 
 
 #### Scenario: Plan week without a paste is ignored
 - **WHEN** `pastedPlanWeek` is given and no plan is pasted
-- **THEN** it is ignored and the onboarding is accepted
+- **THEN** it is ignored, saved as null, and the onboarding is accepted
 
 ### Requirement: Optional context fields
-The system SHALL treat `weeklyTraining` and `targetEvent` as optional, SHALL reject a `weeklyTraining` value that is out of range (sessions per week outside 0 to 14 🔶, or negative km), and SHALL reject a `targetEvent` whose date is invalid or before today in UTC (today is allowed).
+The system SHALL treat `weeklyTraining` and `targetEvent` as optional, SHALL reject a `weeklyTraining` session count that is not a whole number, and a value that is out of range (sessions per week outside 0 to 14 🔶, or negative km), and SHALL reject a `targetEvent` whose date is invalid or before today in UTC (today is allowed).
 
 #### Scenario: Optional fields absent
 - **WHEN** `weeklyTraining` and `targetEvent` are absent
@@ -82,6 +82,10 @@ The system SHALL treat `weeklyTraining` and `targetEvent` as optional, SHALL rej
 
 #### Scenario: Weekly training out of range
 - **WHEN** `weeklyTraining` has sessions outside 0 to 14 or a negative km value
+- **THEN** an error on that field is returned and the coach is not called
+
+#### Scenario: Weekly training is not a whole number
+- **WHEN** a `weeklyTraining` session count is not a whole number
 - **THEN** an error on that field is returned and the coach is not called
 
 #### Scenario: Invalid event date

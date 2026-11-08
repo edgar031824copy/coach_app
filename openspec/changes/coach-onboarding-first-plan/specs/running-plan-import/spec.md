@@ -13,7 +13,7 @@ When a running plan is pasted, the system SHALL use only the rows of week `paste
 
 #### Scenario: No rows for the chosen week
 - **WHEN** the paste has no rows for week `pastedPlanWeek` (for example, week 13 of a 12-week plan)
-- **THEN** the error is `plan_unreadable` (HTTP 422 🔶), the athlete is told no sessions were found for that week, and nothing is saved
+- **THEN** the error is `plan_unreadable` (HTTP 422 🔶), the athlete is told "No running sessions found for week N in your pasted plan", and nothing is saved
 
 ### Requirement: Pasted sessions are kept unchanged
 The system SHALL show the running sessions of a pasted plan exactly as the coach reported reading them (`understoodRunning`), with `source: "athlete"`, the same description (exact string equality 🔶), and a day the paste allows. Intensity is the coach's own label and is not compared.
@@ -50,11 +50,11 @@ When a pasted row allows several days (for example "Friday/Saturday/Sunday"), th
 - **THEN** `understoodRunning` lists fri, sat, and sun as `dayOptions` and the plan has the session on exactly one of them
 
 ### Requirement: Unreadable paste
-The system SHALL reject a response whose `understoodRunning` is empty when a running plan was pasted, and SHALL tell the athlete the plan could not be read. When no plan was pasted, `understoodRunning` SHALL be empty and the plan SHALL contain no `source: "athlete"` sessions.
+The system SHALL reject a response whose `understoodRunning` is empty when a running plan was pasted, and SHALL tell the athlete that no running sessions were found for week N in the pasted plan (one message for both an unreadable paste and a week with no rows, since the server cannot tell them apart). When no plan was pasted, `understoodRunning` SHALL be empty and the plan SHALL contain no `source: "athlete"` sessions.
 
 #### Scenario: Paste with no running sessions
 - **WHEN** a plan is pasted and the coach reports no running sessions read
-- **THEN** the error is `plan_unreadable`, the athlete is told the plan could not be read, and nothing is saved
+- **THEN** the error is `plan_unreadable`, the athlete is told "No running sessions found for week N in your pasted plan", and nothing is saved
 
 #### Scenario: No paste
 - **WHEN** no running plan was pasted

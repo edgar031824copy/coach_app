@@ -62,31 +62,32 @@ type CoachResponse = {
 };
 
 type PlanRecord = { id: number; plan: Plan; onboarding: Onboarding; createdAt: string };
+type PlanResponse = PlanRecord & { remainingCallsToday: number };   // POST success only
 
 type ApiError = { error: "validation_error" | "daily_limit_reached" | "coach_unavailable"
                        | "invalid_coach_response" | "plan_unreadable" | "server_error";
-                  message: string; fields?: Record<string, string> };
+                  message: string; fields?: Record<string, string>; remainingCallsToday?: number };
 ```
 
 **Endpoints**
 
 | Call | Success | Errors |
 |---|---|---|
-| `POST /api/plan` (body: `Onboarding`) | 200 `PlanRecord` | 400 `validation_error` (with `fields`; also a malformed JSON body); 413 `validation_error` for a body over 16 KB 🔶; 429 `daily_limit_reached`; 502 `coach_unavailable`; 422 `invalid_coach_response`; 422 `plan_unreadable`; 500 `server_error` |
+| `POST /api/plan` (body: `Onboarding`) | 200 `PlanResponse` | 400 `validation_error` (with `fields`; also a malformed JSON body); 413 `validation_error` for a body over 16 KB 🔶; 429 `daily_limit_reached`; 502 `coach_unavailable`; 422 `invalid_coach_response`; 422 `plan_unreadable`; 500 `server_error` |
 | `GET /api/plan` | 200 `PlanRecord`, or 200 with JSON `null` | 500 `server_error` |
 | `GET /health` | 200 `{"status":"ok"}` | none |
 
-Status codes are proposals 🔶. `GET /api/plan` never calls the coach. The body-size and JSON-parse errors are raised by middleware before the validator and mapped to the same `ApiError` shape.
+Status codes are proposals 🔶. `GET /api/plan` never calls the coach. The body-size and JSON-parse errors are raised by middleware before the validator and mapped to the same `ApiError` shape. `remainingCallsToday` is the cap's remaining calls after this call, taken from the upsert's returned count; it lets the client say "no retries remain today" without waiting for a 429.
 
 ### 3. The coach is an injected interface
 `CoachClient.generate(onboarding): Promise<CoachResponse>`. The real one calls the Anthropic SDK; tests use a fake that returns canned responses, including hostile ones (altered session, obeying an injected instruction).
 
 Real client settings: model from `COACH_MODEL` (default `claude-sonnet-5-5`); structured output through `output_config.format` with a JSON schema derived from the Zod schema (fallback: ask for JSON and validate, per brief §9); `output_config.effort` set explicitly to `medium` 🔶 for cost, to be tuned by the evals; thinking left at the model default; no sampling parameters and no forced `tool_choice` (both are rejected by this model); client timeout 30 s; `maxRetries: 0`, because every call counts toward the cap and the athlete decides whether to retry; `max_tokens` 8000 🔶, where a refusal or a truncated response maps to `invalid_coach_response`. Token usage per call (counts only, never content) is logged so the first real run gives measured cost.
 
-Prompt layout: rules in the system prompt (Principles 1, 5, 6, the output shape); the onboarding as JSON in the user message; the pasted plan inside explicit delimiters and described as data, never instructions. The coach has no tools.
+Prompt layout: rules in the system prompt (Principles 1, 5, 6, the output shape); the onboarding as JSON in the user message together with today's UTC date (the coach needs it to use `targetEvent`); the pasted plan inside explicit delimiters and described as data, never instructions. The coach has no tools.
 
 ### 4. Validation is a pipeline of pure functions
-`validateOnboarding(body)` returns per-field errors. `validateCoachResponse(onboarding, response)` returns a list of violated rules, grouped as: structure (seven distinct days, at least one rest day unless pasted sessions fill the week), declared days, combined-load note, volume guard, import rules (unchanged sessions, `dayOptions`, only CrossFit added), and safety rules (`painReported` against `safetyNote`). Mapping to errors: coach throws or times out → `coach_unavailable`; any violation → `invalid_coach_response`; a pasted plan with empty `understoodRunning` → `plan_unreadable`, which wins when both apply; a cap or store failure → `server_error` (500) with nothing saved. A refusal, a truncated response, or a response that fails the schema is an `invalid_coach_response`. Pasted sessions are matched to `understoodRunning` one to one (a multiset, so repeated descriptions work). The rest-day exception applies when every day of the final plan has a `source: "athlete"` session, whatever `dayOptions` allowed. Each function has no I/O, so each spec scenario is one unit test with the fake coach.
+`validateOnboarding(body)` returns per-field errors. `validateCoachResponse(onboarding, response)` returns a list of violated rules, grouped as: structure (seven distinct days, at least one rest day unless pasted sessions fill the week), declared days, combined-load note, volume guard, import rules (unchanged sessions, `dayOptions`, only CrossFit added), and safety rules (`painReported` against `safetyNote`). Mapping to errors: coach throws or times out → `coach_unavailable`; any violation → `invalid_coach_response`; a pasted plan with empty `understoodRunning` → `plan_unreadable`, which wins when both apply; a cap or store failure → `server_error` (500) with nothing saved. A refusal, a truncated response, or a response that fails the schema is an `invalid_coach_response`. Pasted sessions are matched to `understoodRunning` one to one (a multiset, so repeated descriptions work). The rest-day exception applies when every day of the final plan has a `source: "athlete"` session, whatever `dayOptions` allowed (a flexible pasted session may be placed on the only free day; accepted as rare). Each function has no I/O, so each spec scenario is one unit test with the fake coach.
 *Alternative:* one big validator returning a boolean (cannot tell the athlete or the tests why).
 
 ### 5. Data model and the atomic cap
@@ -129,6 +130,7 @@ Vitest in both packages; supertest for the API; `pg-mem` for the store; the fake
 - **Cold start** (Render about a minute, Supabase paused after a week idle) → the "waking up" state; a paused database shows as `server_error` and the first request after a long gap may need a retry.
 - **Cost runaway** → the atomic daily cap plus an Anthropic spend limit set by the owner, and token usage logged to measure it.
 - **The open `GET /api/plan`** exposes the latest plan, including a safety note → private URL, accepted for E1.
+- **Supabase's direct database host is reported to be IPv6-only on the free tier**, which GitHub-hosted runners and Render may not reach → use the pooler connection string (session mode for migrations) from the start, listed in the owner checklist (task 8.2); confirm at the first deploy.
 - **Render free tier with npm workspaces is unverified** → the CI clean build uses the same commands; any difference shows at the first deploy.
 - **Model behavior drift** (model id, structured output support) → check in the first coach task (brief §9).
 

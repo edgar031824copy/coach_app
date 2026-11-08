@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Reads and writes docs/.phase, the one-line state of the active change (workflow §10).
+# Usage: scripts/phase show
+#        scripts/phase set key=value [key=value ...]   (merges into the current line)
+#        scripts/phase get <key>
+# Phases: defining proposed approved building verifying archiving archived
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FILE="$ROOT/docs/.phase"
+PHASES="defining proposed approved building verifying archiving archived"
+
+cmd="${1:-show}"; shift || true
+line="$(cat "$FILE" 2>/dev/null || true)"
+
+case "$cmd" in
+  show) echo "${line:-no phase recorded}" ;;
+  get)
+    key="${1:?usage: scripts/phase get <key>}"
+    for kv in $line; do [ "${kv%%=*}" = "$key" ] && echo "${kv#*=}"; done
+    exit 0 ;;
+  set)
+    [ $# -gt 0 ] || { echo "usage: scripts/phase set key=value ..." >&2; exit 1; }
+    for arg in "$@"; do
+      [[ "$arg" == *=* && "$arg" != *" "* ]] || { echo "bad argument '$arg' (want key=value, no spaces)" >&2; exit 1; }
+      if [ "${arg%%=*}" = "phase" ] && [[ " $PHASES " != *" ${arg#*=} "* ]]; then
+        echo "unknown phase '${arg#*=}'. Allowed: $PHASES" >&2; exit 1
+      fi
+    done
+    declare -a keys=(); declare -a vals=()
+    for kv in $line; do keys+=("${kv%%=*}"); vals+=("${kv#*=}"); done
+    for arg in "$@"; do
+      k="${arg%%=*}"; v="${arg#*=}"; found=0
+      for i in "${!keys[@]}"; do
+        if [ "${keys[$i]}" = "$k" ]; then vals[$i]="$v"; found=1; fi
+      done
+      if [ $found -eq 0 ]; then keys+=("$k"); vals+=("$v"); fi
+    done
+    out=""
+    for i in "${!keys[@]}"; do out+="${keys[$i]}=${vals[$i]} "; done
+    echo "${out% }" > "$FILE"
+    cat "$FILE" ;;
+  *) echo "usage: scripts/phase show|get <key>|set key=value ..." >&2; exit 1 ;;
+esac

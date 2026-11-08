@@ -7,9 +7,9 @@ A coach for hybrid athletes (running + CrossFit). It builds a combined training 
 
 ## Status
 
-- Harness: **designed, not built yet.** Items marked *planned* in `docs/workflow.md` do not exist yet; do not assume a hook, agent, or CI check is active until it is listed as built there.
+- Harness: **partly built.** Built: CI, branch protection, reviewer agents, hooks and deny rules (`.claude/settings.json`), `scripts/phase`, `scripts/trace`. Still planned: `deploy.yml`, `e2e/`, `evals/` (status legend in `docs/workflow.md`).
 - Code: not scaffolded. The first task of epic E1 creates the project.
-- Active change: none. State lives in `docs/.phase` (planned).
+- Active change: `coach-onboarding-first-plan` (E1), approved; state in `docs/.phase`.
 - Epic briefs live in `docs/epics/`. E1's brief (`docs/epics/E1-onboarding-first-plan.md`) is drafted and waits for gate G0. The earlier course-style spec and task files were folded into it and removed.
 
 ## Stack (decided, see PRD §13)

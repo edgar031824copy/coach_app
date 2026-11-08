@@ -1,6 +1,6 @@
 # 0005. Application stack
 
-**Status:** Proposed
+**Status:** Accepted (2026-11-08)
 **Date:** 2026-11-05
 
 ## Context

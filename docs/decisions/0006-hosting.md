@@ -1,6 +1,6 @@
 # 0006. Hosting
 
-**Status:** Proposed
+**Status:** Accepted (2026-11-08)
 **Date:** 2026-11-05
 
 ## Context
@@ -27,3 +27,4 @@ The owner wants free or very cheap hosting for a personal, single-user phase. Fr
 - Supabase free projects pause after a week of inactivity; open the project before demos or checkpoints.
 - Vercel Hobby is for non-commercial use only; revisit if the product is ever monetized.
 - Every limit above must be re-checked before relying on it.
+- Supabase's direct database host is IPv6-only on the free tier (the IPv4 add-on is paid), which GitHub-hosted runners and Render may not reach. Use the pooler connection string instead: session mode for migrations and for the server.

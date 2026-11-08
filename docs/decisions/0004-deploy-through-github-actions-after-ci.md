@@ -1,6 +1,6 @@
 # 0004. Deploy through GitHub Actions, after CI, with E1 built locally
 
-**Status:** Proposed
+**Status:** Accepted (2026-11-08)
 **Date:** 2026-11-05
 
 ## Context

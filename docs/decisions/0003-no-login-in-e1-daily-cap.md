@@ -1,6 +1,6 @@
 # 0003. No login in E1; a daily cap on coach calls
 
-**Status:** Proposed
+**Status:** Accepted (2026-11-08)
 **Date:** 2026-11-05
 
 ## Context

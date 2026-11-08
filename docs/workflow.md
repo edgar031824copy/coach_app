@@ -140,7 +140,7 @@ This replaces a hand-maintained feature list with something derived, so there is
 
 - Each scenario in `openspec/specs/**` has an id: `<capability>/<requirement-slug>/<scenario-slug>`.
 - Every test that proves a scenario includes `@spec(<id>)` in its title.
-- A script (`scripts/trace`) ✅ lists every scenario in the canonical specs and the scenarios of the open change, and fails if any scenario has no test or if a tagged test that existed on `master` was removed. Run `scripts/trace --report` while building (progress; uncovered scenarios do not fail) and plain `scripts/trace` at G4. A scenario id slug is the lowercased heading with non-alphanumerics turned into `-`. It scans every file outside `openspec/`, `docs/`, `.claude/` and `node_modules/` for `@spec`, `@eval` and `@manual` tags.
+- A script (`scripts/trace`) ✅ lists every scenario in the canonical specs and the scenarios of the open change, and fails if any scenario has no test or if a tagged test that existed on `master` was removed. Run `scripts/trace --report` while building (progress; uncovered scenarios do not fail) and plain `scripts/trace` at G4. A scenario id slug is the lowercased heading with non-alphanumerics turned into `-`. It scans every file outside `openspec/`, `.claude/`, `scripts/`, `node_modules/` and build output for `@spec`, `@eval` and `@manual` tags.
 - "Passes" comes from the test run in CI, not from a stored flag, so nobody can flip it by hand.
 
 This protects against the failure noted in the solo-mode review: a later epic loosening an earlier epic's tests.
@@ -190,6 +190,15 @@ Phases: `defining` → `proposed` → `approved` → `building` → `verifying` 
 
 Keep the set small: a hook is for a rule with zero exceptions; everything else stays in `CLAUDE.md`. Permission deny rules cover merging, pushing to `master`, deploying, and reading secret files.
 
+### 11.1 What is built (hooks and deny rules)
+
+Files: `.claude/settings.json`, `.claude/hooks/{guard-edit,stop-check,session-start}.sh`. Known limits, accepted for now:
+- The edit guard sees only the Edit, Write and NotebookEdit tools, and only absolute paths. A shell command such as `sed -i` bypasses it; CI and review are the backstop. It refuses every edit if `jq` is missing, and blocks edits to `docs/.phase`.
+- The Stop hook runs only when files outside `docs/`, `openspec/`, `.claude/`, `scripts/` differ from the merge-base with `origin/master` (committed or not), and does nothing until a `package.json` exists. Timeout 300 s.
+- Deny rules match command text. They cover `gh pr merge`, pushes naming `master`, force pushes, `gh workflow run`, `gh secret`, `vercel`, and reading `.env`/`.pem`/`.key` files. The `.env` rules cover the Read tool, not `cat` through Bash. A bare `git push` while on `master` is not matched; branch protection (admins not enforced) is what stops it. The model cannot run `scripts/phase set phase=defining` or `phase=proposed` (deny rule); it can still move the phase forward, and nothing stops it from setting `archiving`, which G4 and the owner's merge cover.
+- `scripts/trace` does not yet understand `## REMOVED Requirements` in delta specs; handle it in the first change that removes a requirement.
+- To fix a typo in a frozen file, the owner runs `scripts/phase set phase=defining`, edits, then sets the phase back.
+
 ## 12. Reviewers
 
 Both are subagents in `.claude/agents/` ✅ with `tools: Read, Grep, Glob` only: they can read and report, not edit. They start with no memory of how the work was done, which is the point.
@@ -237,11 +246,3 @@ Simple rules, so the harness does not burn context or money:
 ## 18. Not in scope for now
 
 Observability (cost and tokens per epic, CI timing, eval trends) comes at the end. Multi-agent orchestration, a state-machine library, and AIDLC are deliberately not used: the problem is one builder and one app. The Estación 7 course material is not part of this process; the only ideas borrowed are the three review lenses (section 12) and the task format (scope, acceptance criteria, test plan), which `openspec/config.yaml` should encode for `tasks.md`.
-
-### 11.1 What is built (hooks and deny rules)
-
-Files: `.claude/settings.json`, `.claude/hooks/{guard-edit,stop-check,session-start}.sh`. Known limits, accepted for now:
-- The edit guard sees only the Edit, Write and NotebookEdit tools. A shell command such as `sed -i` bypasses it; CI and review are the backstop.
-- The Stop hook runs only when files outside `docs/`, `openspec/`, `.claude/` changed, and does nothing until a `package.json` exists.
-- Deny rules match command text. They cover `gh pr merge`, pushes naming `master`, force pushes, `gh workflow run`, `gh secret`, `vercel`, and reading `.env`/`.pem`/`.key` files. A bare `git push` while on `master` is not matched; branch protection (admins not enforced) is what stops it.
-- To fix a typo in a frozen file, the owner runs `scripts/phase set phase=defining`, edits, then sets the phase back.

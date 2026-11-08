@@ -11,6 +11,12 @@
       "Bash(rtk git push*--force*)",
       "Bash(git push*-f *)",
       "Bash(rtk git push*-f *)",
+      "Bash(git push*-f)",
+      "Bash(rtk git push*-f)",
+      "Bash(git push*+*)",
+      "Bash(rtk git push*+*)",
+      "Bash(*scripts/phase set*phase=defining*)",
+      "Bash(*scripts/phase set*phase=proposed*)",
       "Bash(gh workflow run*)",
       "Bash(gh secret*)",
       "Bash(vercel*)",
@@ -23,16 +29,36 @@
   },
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh" } ] }
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
     ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write|NotebookEdit",
-        "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.sh" } ]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.sh"
+          }
+        ]
       }
     ],
     "Stop": [
-      { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.sh" } ] }
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.sh",
+            "timeout": 300
+          }
+        ]
+      }
     ]
   }
 }

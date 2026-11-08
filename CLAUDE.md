@@ -10,7 +10,7 @@ A coach for hybrid athletes (running + CrossFit). It builds a combined training 
 - Harness: **partly built.** Built: CI, branch protection, reviewer agents, hooks and deny rules (`.claude/settings.json`), `scripts/phase`, `scripts/trace`. Still planned: `deploy.yml`, `e2e/`, `evals/` (status legend in `docs/workflow.md`).
 - Code: not scaffolded. The first task of epic E1 creates the project.
 - Active change: `coach-onboarding-first-plan` (E1), approved; state in `docs/.phase`.
-- Epic briefs live in `docs/epics/`. E1's brief (`docs/epics/E1-onboarding-first-plan.md`) is drafted and waits for gate G0. The earlier course-style spec and task files were folded into it and removed.
+- Epic briefs live in `docs/epics/`. E1's brief (`docs/epics/E1-onboarding-first-plan.md`) passed gate G0, and its change `coach-onboarding-first-plan` passed G1 (Spec PR merged). The earlier course-style spec and task files were folded into it and removed.
 
 ## Stack (decided, see PRD §13)
 

@@ -6,7 +6,7 @@
 // Checks:       1. every scenario has a tag            (skipped with --report: progress view while building)
 //               2. every tag names a real scenario     (typo guard)
 //               3. no tag that exists on master was removed (the "later epic loosens an earlier test" guard)
-// Usage:        scripts/trace [--report] [--base <git-ref>]     exit 1 on any failed check
+// Usage:        scripts/trace [--report] [--base <git-ref>]   (base defaults to origin/master)     exit 1 on any failed check
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 const ROOT = join(import.meta.dirname, '..');
 const args = process.argv.slice(2);
 const report = args.includes('--report');
-const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'master';
+const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'origin/master';
 
 const slug = (s) => s.toLowerCase().replace(/[`'"]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
@@ -56,14 +56,14 @@ for (const f of specFiles) {
 
 // 2. Tags in the working tree.
 const TAG = /@(?:spec|eval|manual)\(([a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+)\)/g;
-const SKIP = new Set(['node_modules', '.git', 'openspec', '.claude', 'dist', 'build', 'coverage', 'evals/results']);
+// Same exclusions for the working tree and the base ref (docs/ is scanned: the manual checklist may live there).
+const SKIP = ['node_modules', '.git', 'openspec', '.claude', 'scripts', 'dist', 'build', 'coverage', 'evals/results'];
 const tagged = new Map(); // id -> [files]
 function scan(dir) {
   for (const name of readdirSync(dir)) {
-    if (SKIP.has(name)) continue;
     const p = join(dir, name);
+    if (SKIP.includes(relative(ROOT, p).split(sep).join('/'))) continue;
     if (statSync(p).isDirectory()) { scan(p); continue; }
-    if (p === join(ROOT, 'scripts/trace') || p.endsWith('.md') && relative(ROOT, p).startsWith('docs/')) continue;
     let text; try { text = readFileSync(p, 'utf8'); } catch { continue; }
     for (const m of text.matchAll(TAG)) {
       if (!tagged.has(m[1])) tagged.set(m[1], []);
@@ -78,12 +78,16 @@ const unknown = [...tagged.keys()].filter((id) => !scenarios.has(id));
 
 // 3. Tags that exist on the base ref but are gone now.
 let removed = [];
+try { execFileSync('git', ['rev-parse', '--verify', '--quiet', base], { cwd: ROOT, stdio: 'ignore' }); }
+catch { console.error(`FAIL: base ref '${base}' not found (in CI use fetch-depth: 0; or pass --base)`); process.exit(1); }
 try {
-  const out = execFileSync('git', ['grep', '-h', '-o', '-E', '@(spec|eval|manual)\\([a-z0-9/-]+\\)', base, '--', '.', ':!openspec', ':!docs', ':!.claude', ':!scripts'],
-    { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const out = execFileSync('git', ['grep', '-h', '-o', '-E', '@(spec|eval|manual)\\([a-z0-9/-]+\\)', base, '--', '.', ...SKIP.map((x) => `:!${x}`)],
+    { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const onBase = new Set([...out.matchAll(TAG)].map((m) => m[1]));
   removed = [...onBase].filter((id) => !tagged.has(id));
-} catch { /* no matches on base, or no such ref yet: nothing to compare */ }
+} catch (e) {
+  if (e.status !== 1) { console.error('FAIL: git grep on ' + base + ' failed: ' + e.message); process.exit(1); } // status 1 = no tags on base yet
+}
 
 const covered = scenarios.size - uncovered.length;
 console.log(`scenarios: ${scenarios.size}  covered: ${covered}  uncovered: ${uncovered.length}  tags: ${tagged.size}`);

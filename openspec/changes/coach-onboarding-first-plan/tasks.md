@@ -23,7 +23,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: each listed scenario has a passing test; the function does no I/O.
   - Test plan: table-driven unit tests, one case per scenario.
   - Scenarios: `onboarding/required-answers/*`, `onboarding/field-validation/*`.
-- [ ] 2.2 Extend `validateOnboarding` for the pasted plan and optional fields (length, whitespace-only as absent, `pastedPlanWeek` default and range, `weeklyTraining` ranges, `targetEvent` date in UTC with an injectable clock, the free-text length limits and the week saved as 1 when defaulted; the 16 KB body limit and JSON parse errors come from middleware and are mapped to the `ApiError` shape). Measure the author's real 12-week plan copied from the spreadsheet; if it exceeds 4,000 characters, raise the paste limit before this PR merges.
+- [x] 2.2 Extend `validateOnboarding` for the pasted plan and optional fields (length, whitespace-only as absent, `pastedPlanWeek` default and range, `weeklyTraining` ranges, `targetEvent` date in UTC with an injectable clock, the free-text length limits and the week saved as 1 when defaulted; the 16 KB body limit and JSON parse errors come from middleware and are mapped to the `ApiError` shape). Measure the author's real 12-week plan copied from the spreadsheet; if it exceeds 4,000 characters, raise the paste limit before this PR merges.
   - Done when: all listed scenarios pass, including "event date today is allowed".
   - Test plan: unit tests with a fixed clock.
   - Scenarios: `onboarding/pasted-running-plan-input/*`, `onboarding/optional-context-fields/*`, `onboarding/free-text-length-limits/*`.

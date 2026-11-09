@@ -19,7 +19,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 2. Onboarding validation
 
-- [ ] 2.1 Implement `validateOnboarding` for required answers and field rules (goal, levels, days, duplicates, empty injuries; the malformed-body scenario is tested over HTTP in 2.3).
+- [x] 2.1 Implement `validateOnboarding` for required answers and field rules (goal, levels, days, duplicates, empty injuries; the malformed-body scenario is tested over HTTP in 2.3).
   - Done when: each listed scenario has a passing test; the function does no I/O.
   - Test plan: table-driven unit tests, one case per scenario.
   - Scenarios: `onboarding/required-answers/*`, `onboarding/field-validation/*`.

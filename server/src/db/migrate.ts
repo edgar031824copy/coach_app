@@ -1,12 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Db } from './types.js';
 
-// The smallest thing pg's Client satisfies. It must be ONE connection (not a pool),
-// because each migration runs inside a BEGIN ... COMMIT on that connection.
-export interface Db {
-  query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
-}
-
+// `db` must be ONE connection (not a pool), because each migration runs inside a BEGIN ... COMMIT on it.
 // Forward-only SQL migrations (design.md section 8). Runs every `*.sql` file in `dir` that is not yet recorded in
 // `schema_migrations`, in name order, each in its own transaction. Returns the names it applied.
 // Migrations run while the old server is still up, so they must be backward compatible (add, never drop or rename).

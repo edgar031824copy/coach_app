@@ -1,4 +1,6 @@
 import pg from 'pg';
+import { fileURLToPath } from 'node:url';
+import { migrate } from '../src/db/migrate.js';
 
 // Every database test runs against real Postgres (the same engine as production and CI).
 // Locally: your own Postgres, database `coach_app_test` (default URL below). CI: a Postgres service container
@@ -28,4 +30,11 @@ export async function realClient() {
     await client.end();
   };
   return { client, cleanup };
+}
+
+// A fresh schema with the real migrations applied: what the store and cap tests start from.
+export async function migratedClient() {
+  const db = await realClient();
+  await migrate(db.client, fileURLToPath(new URL('../migrations', import.meta.url)));
+  return db;
 }

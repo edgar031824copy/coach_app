@@ -39,7 +39,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: run the migration twice in a test; one probe test per `pg-mem` feature.
   - Result (2026-11-08): `pg-mem` handles `jsonb`, `bigserial`, `timestamptz`, ordering and plain `ON CONFLICT DO UPDATE`, but returns the existing row from `DO UPDATE ... WHERE` at the limit (real Postgres returns none) and ignores `ROLLBACK`. Fallback decision: every database test runs against real Postgres (a service container in CI, the owner's local Postgres otherwise) and `pg-mem` is not used.
   - Scenarios: none (foundation).
-- [ ] 3.2 Implement the plan store: save a plan with its onboarding, read the latest (highest `created_at`, then `id`).
+- [x] 3.2 Implement the plan store: save a plan with its onboarding, read the latest (highest `created_at`, then `id`).
   - Done when: the listed scenarios pass against the store.
   - Test plan: store tests with controlled timestamps, including two plans with equal times.
   - Scenarios: `plan-storage/save-only-valid-plans/*`, `plan-storage/reload-without-a-coach-call/no-plan-yet`, `plan-storage/reload-without-a-coach-call/latest-plan-wins`.

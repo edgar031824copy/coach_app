@@ -27,7 +27,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: all listed scenarios pass, including "event date today is allowed".
   - Test plan: unit tests with a fixed clock.
   - Scenarios: `onboarding/pasted-running-plan-input/*`, `onboarding/optional-context-fields/*`, `onboarding/free-text-length-limits/*`.
-- [ ] 2.3 Wire `POST /api/plan` to the validator: 400 `validation_error` with per-field messages, using a spy coach that must not be called and a cap count that must not change.
+- [x] 2.3 Wire `POST /api/plan` to the validator: 400 `validation_error` with per-field messages, using a spy coach that must not be called and a cap count that must not change.
   - Done when: an invalid body returns 400 with `fields`, the spy shows zero calls, and the count is unchanged; an over-16 KB body returns 413 and an unparseable body returns 400, both with no coach call.
   - Test plan: supertest with the spy coach and an in-memory count.
   - Scenarios: `onboarding/invalid-input-never-reaches-the-coach/*`, `onboarding/field-validation/malformed-body-is-rejected`, `onboarding/free-text-length-limits/request-body-too-large`.
@@ -132,6 +132,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 ## 8. Deploy, verification, and archive (last PR)
 
 - [ ] 8.1 Write `.github/workflows/deploy.yml`: run only after a `CI` run on `master` that was triggered by a push and concluded `success` (filter the `workflow_run` on branch, event, and conclusion); migrate, deploy the server (create a Render deploy through its API and poll until it is live), deploy the client (Vercel, prebuilt), smoke test (`/health`, `GET /api/plan`, the client URL, a CORS check, and an invalid `POST /api/plan` that must return 400 without a coach call); stop at the first failing step and report a failed smoke test as a failed commit status. Use a `concurrency` group so deploys do not overlap, never print a response body to the log, and keep migrations backward compatible.
+  - Note from the group 1 review: if Render sets `NODE_ENV=production` for the build (unverified), `npm ci` skips dev dependencies and `tsc` would be missing. Then make the Render build command `npm ci --include=dev && npm run build -w server` (or move `typescript` to `dependencies`), and run the CI `clean-build` job with `NODE_ENV=production` so it builds the way Render does.
   - Done when: the workflow validates (`actionlint`); the passing checks for its deploy scenarios are the recorded runs in task 8.3.
   - Test plan: `actionlint` plus a branch dry run with deploy steps disabled.
   - Scenarios: `deploy/deploy-order-behind-green-ci/red-ci-does-not-deploy`, `deploy/deploy-order-behind-green-ci/green-merge-deploys-in-order`, `deploy/failure-handling/*`, `deploy/write-path-is-live/*`.

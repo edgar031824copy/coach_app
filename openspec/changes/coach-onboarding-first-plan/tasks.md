@@ -4,15 +4,15 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 1. Scaffold the server and the shared contract
 
-- [ ] 1.1 Create the `server/` package (Express, TypeScript, Vitest, supertest) with `GET /health`.
+- [x] 1.1 Create the `server/` package (Express, TypeScript, Vitest, supertest) with `GET /health`.
   - Done when: `npm test` in `server/` runs and passes; `/health` returns `{"status":"ok"}`.
   - Test plan: a supertest test for `/health` written first.
   - Scenarios: `deploy/live-health/health-check` (locally; the live run is task 8.3).
-- [ ] 1.2 Create `shared/` with the types and Zod schemas from `design.md` (Day, Level, Onboarding, Session, Plan, CoachResponse, PlanRecord, ApiError) and wire `server/` (and later `client/`) to import it through npm workspaces (a root `package.json`).
+- [x] 1.2 Create `shared/` with the types and Zod schemas from `design.md` (Day, Level, Onboarding, Session, Plan, CoachResponse, PlanRecord, ApiError) and wire `server/` (and later `client/`) to import it through npm workspaces (a root `package.json`).
   - Done when: both a valid and an invalid sample parse as expected for each schema; `server/` compiles against `shared/`; the server build compiles `shared` first and `node server/dist/index.js` starts from a fresh checkout.
   - Test plan: unit tests with one accepted and one rejected sample per schema.
   - Scenarios: none (foundation for groups 2 to 6).
-- [ ] 1.3 Extend `.github/workflows/ci.yml` with typecheck, lint, and test steps for every package that exists, plus a clean build from a fresh checkout with the commands Render will use (`npm ci && npm run build -w server`); `ci-complete` depends on them.
+- [x] 1.3 Extend `.github/workflows/ci.yml` with typecheck, lint, and test steps for every package that exists, plus a clean build from a fresh checkout with the commands Render will use (`npm ci && npm run build -w server`); `ci-complete` depends on them.
   - Done when: the PR's CI is green, and a deliberately failing test (removed before merge) turns `ci-complete` red.
   - Test plan: observe both runs on the PR; keep the red run's link in the PR description.
   - Scenarios: none (harness).

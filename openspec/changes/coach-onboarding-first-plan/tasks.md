@@ -34,19 +34,21 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 3. Store and daily cap
 
-- [ ] 3.1 Add the migration runner (SQL files plus a `schema_migrations` table) and the first migration (`plans`, `coach_call_counts`); check that `pg-mem` supports `jsonb`, `timestamptz`, and `ON CONFLICT ... DO UPDATE ... WHERE`.
+- [x] 3.1 Add the migration runner (SQL files plus a `schema_migrations` table) and the first migration (`plans`, `coach_call_counts`); check that `pg-mem` supports `jsonb`, `timestamptz`, and `ON CONFLICT ... DO UPDATE ... WHERE`.
   - Done when: the migration applies twice without error; the `pg-mem` check is written in the PR description with the fallback decision (real Postgres for store tests) if anything is unsupported.
   - Test plan: run the migration twice in a test; one probe test per `pg-mem` feature.
+  - Result (2026-11-08): `pg-mem` handles `jsonb`, `bigserial`, `timestamptz`, ordering and plain `ON CONFLICT DO UPDATE`, but returns the existing row from `DO UPDATE ... WHERE` at the limit (real Postgres returns none) and ignores `ROLLBACK`. Fallback decision: every database test runs against real Postgres (a service container in CI, the owner's local Postgres otherwise) and `pg-mem` is not used.
   - Scenarios: none (foundation).
-- [ ] 3.2 Implement the plan store: save a plan with its onboarding, read the latest (highest `created_at`, then `id`).
+- [x] 3.2 Implement the plan store: save a plan with its onboarding, read the latest (highest `created_at`, then `id`).
   - Done when: the listed scenarios pass against the store.
   - Test plan: store tests with controlled timestamps, including two plans with equal times.
   - Scenarios: `plan-storage/save-only-valid-plans/*`, `plan-storage/reload-without-a-coach-call/no-plan-yet`, `plan-storage/reload-without-a-coach-call/latest-plan-wins`.
-- [ ] 3.3 Implement the cap reservation (the single atomic upsert from `design.md`, default 20, UTC day, never refunded) with an injectable clock, and refuse to start when `MAX_COACH_CALLS_PER_DAY` is not a positive integer.
+- [x] 3.3 Implement the cap reservation (the single atomic upsert from `design.md`, default 20, UTC day, never refunded) with an injectable clock, and refuse to start when `MAX_COACH_CALLS_PER_DAY` is not a positive integer.
   - Done when: at the limit the reservation returns "denied"; a new UTC day resets; `MAX_COACH_CALLS_PER_DAY` is honored.
   - Test plan: sequential unit tests with a fake clock.
   - Scenarios: `cost-cap/daily-cap/default-limit`, `cost-cap/daily-cap/invalid-limit-setting`, `cost-cap/what-counts-toward-the-cap/new-day-resets-the-count`.
-- [ ] 3.4 Add a Postgres service container to CI and a concurrency test that fires two reservations with one call left; skip it locally when no test database is configured.
+- [x] 3.4 Add a Postgres service container to CI and a concurrency test that fires two reservations with one call left; skip it locally when no test database is configured.
+  - Note: the service container itself was added in 3.1's PR, because every database test now uses real Postgres; this task keeps the concurrency test and the 20-run loop. The "skip it locally when no test database is configured" part is superseded: with all database tests on real Postgres, a missing local database fails loudly with instructions instead of skipping, so the concurrency test can never be skipped silently.
   - Done when: in CI exactly one of two simultaneous reservations succeeds, repeatedly (run the test 20 times in a loop).
   - Test plan: the loop test itself, against real Postgres.
   - Scenarios: `cost-cap/cap-holds-under-concurrency/two-requests-with-one-call-left`.

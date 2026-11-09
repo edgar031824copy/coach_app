@@ -76,6 +76,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: each outcome is returned with the right status and error, and the store is empty after any failure; a thrown cap reservation or save returns 500 `server_error` with nothing saved, and a reservation made before a failed save still counts.
   - Test plan: supertest with a fake coach that succeeds, throws, times out, and returns invalid and unreadable responses.
   - Scenarios: `plan-generation/distinct-failure-outcomes/*`, `plan-generation/target-event-as-context/event-is-sent-to-the-coach`, `plan-generation/seven-day-plan/valid-onboarding-gives-seven-days`, `cost-cap/daily-cap/cap-reached`, `cost-cap/what-counts-toward-the-cap/failed-call-counts`, `cost-cap/what-counts-toward-the-cap/rejected-response-counts`, `plan-storage/save-only-valid-plans/*`.
+  - Control case (from the group 2 review): add a test where a valid body calls the coach and increments the cap count, so the "coach not called and count unchanged" checks of `onboarding/invalid-input-never-reaches-the-coach/*` can actually fail. Until this exists they only pass because nothing calls the coach or the cap.
 - [ ] 5.2 Implement `GET /api/plan` returning the latest `PlanRecord` or `null`, with no coach call.
   - Done when: it returns the saved plan after a successful `POST` and `null` before any.
   - Test plan: supertest with a spy coach showing zero calls on `GET`.

@@ -167,6 +167,15 @@ describe('validateOnboarding: optional context fields', () => {
     expect(failedFields({ weeklyTraining })).toEqual(['weeklyTraining']);
   });
 
+  it.each([
+    { ...training, runningSessions: '3' },
+    { ...training, runningKm: '25' },
+    'abc',
+    [],
+  ])('rejects weekly training of the wrong type %j', (weeklyTraining) => {
+    expect(failedFields({ weeklyTraining })).toEqual(['weeklyTraining']);
+  });
+
   it.each([{ ...training, runningSessions: 2.5 }, { ...training, crossfitSessions: 1.1 }])(
     'rejects a session count that is not a whole number %j @spec(onboarding/optional-context-fields/weekly-training-is-not-a-whole-number)',
     (weeklyTraining) => {

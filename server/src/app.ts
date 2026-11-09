@@ -28,6 +28,19 @@ const bodyErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   next(err);
 };
 
+// Last resort: every error leaves as an ApiError, never Express's HTML page or a stack trace.
+// Client errors raised by the body parser (for example 415 for an unsupported charset) keep their status.
+// Only 5xx are logged, by name only: error messages can quote the request body (see task 5.4's logging rules).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const fallbackErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 500) {
+    console.error('unhandled error:', err?.name ?? 'Error');
+    return sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
+  }
+  sendError(res, status, { error: 'validation_error', message: 'The request could not be read.' });
+};
+
 export function createApp(deps?: AppDeps) {
   const app = express();
   app.locals.deps = deps; // consumed by the generation flow in task 5.1
@@ -50,6 +63,7 @@ export function createApp(deps?: AppDeps) {
   });
 
   app.use(bodyErrorHandler); // error handlers go after the routes
+  app.use(fallbackErrorHandler);
 
   return app;
 }

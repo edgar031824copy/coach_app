@@ -93,6 +93,18 @@ describe('POST /api/plan: validation (task 2.3)', () => {
     expect(capCount).toBe(0);
   });
 
+  it('answers an unsupported charset with a 415 ApiError, not Express HTML or a stack trace', async () => {
+    const res = await request(createApp({ coach: spyCoach, reserveCall }))
+      .post('/api/plan')
+      .set('Content-Type', 'application/json; charset=iso-8859-1')
+      .send('{}');
+    expect(res.status).toBe(415);
+    expect(res.headers['content-type']).toMatch(/application\/json/);
+    expect(ApiErrorSchema.parse(res.body).error).toBe('validation_error');
+    expect(res.text).not.toMatch(/at .*\.(js|ts)/); // no stack trace
+    expect(coachCalls).toBe(0);
+  });
+
   it('accepts a body just under 16 KB into validation (then the 2,000-character injuries limit applies)', async () => {
     const res = await post({ ...valid, injuries: 'x'.repeat(10 * 1024) });
     expect(res.status).toBe(400); // validation error on injuries, not a 413

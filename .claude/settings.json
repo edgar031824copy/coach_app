@@ -1,0 +1,64 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(gh pr merge*)",
+      "Bash(rtk gh pr merge*)",
+      "Bash(gh api *merge*)",
+      "Bash(gh api *branches/*protection*)",
+      "Bash(git push*master*)",
+      "Bash(rtk git push*master*)",
+      "Bash(git push*--force*)",
+      "Bash(rtk git push*--force*)",
+      "Bash(git push*-f *)",
+      "Bash(rtk git push*-f *)",
+      "Bash(git push*-f)",
+      "Bash(rtk git push*-f)",
+      "Bash(git push*+*)",
+      "Bash(rtk git push*+*)",
+      "Bash(*scripts/phase set*phase=defining*)",
+      "Bash(*scripts/phase set*phase=proposed*)",
+      "Bash(gh workflow run*)",
+      "Bash(gh secret*)",
+      "Bash(vercel*)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/stop-check.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

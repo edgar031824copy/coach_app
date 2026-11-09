@@ -4,7 +4,7 @@ This document explains how coach_app is built, and the harness that enforces it,
 
 **The harness is not this file.** The harness is the machinery: hooks and settings in `.claude/`, the reviewer agents, skills, scripts, CI workflows, and branch protection. This document explains the intent and gives the map. When a piece is built, the file that implements it is the source of truth, and this document links to it; if the two disagree, the file wins and this document gets fixed. Rules that must never have exceptions live in hooks and CI, not in prose.
 
-**Status legend:** ✅ built · 🔲 planned (designed, not built yet). At the time of writing, everything below is 🔲 except this document and `CLAUDE.md`.
+**Status legend:** ✅ built · 🔲 planned (designed, not built yet). Built so far: OpenSpec setup, CI with `ci-complete`, branch protection, both reviewer agents, hooks, deny rules, `scripts/phase`, `scripts/trace`. Still 🔲: `deploy.yml`, `e2e/`, `evals/`.
 
 ## 1. What the harness is, and why
 
@@ -57,9 +57,9 @@ There is no multi-agent chain. Roles are **stages that produce artifacts**; the 
 |---|---|---|
 | Epic definition ("PM") | Owner + Claude (Claude asks questions, owner answers) | `docs/epics/E<n>-<slug>.md` |
 | Design ("tech lead") | Claude via OpenSpec | `proposal.md`, `specs/`, `design.md`, `tasks.md` |
-| Design review | `design-reviewer` subagent 🔲 | Review notes in the Spec PR |
+| Design review | `design-reviewer` subagent ✅ | Review notes in the Spec PR |
 | Build ("dev") | Claude via `/opsx:apply` with TDD | Code, tests, PRs |
-| Code review | `code-reviewer` subagent 🔲 and `@claude` on the PR | Review comments |
+| Code review | `code-reviewer` subagent ✅ and `@claude` on the PR | Review comments |
 | QA | CI (unit, integration, Playwright end-to-end) and the G4 gate, plus an exploratory pass with `/verify` | Pass/fail, plus findings |
 | Release | Owner | Merge, archive |
 
@@ -69,8 +69,8 @@ There is no multi-agent chain. Roles are **stages that produce artifacts**; the 
 |---|---|---|---|---|
 | **G0 Definition of Ready** | Before `/opsx:new` | Soft | design-reviewer checks the brief against section 6 | Owner |
 | **G1 Design** | End of inception | Soft | design-reviewer notes, then Spec PR review | **Owner approves** |
-| **G2 Build** | Every PR | **Hard** | Stop hook locally 🔲; CI required check `ci-complete` 🔲 (tests, typecheck, lint, secret scan, dependency audit) with branch protection | CI |
-| **G3 Review** | Every PR | Soft, independent | `code-reviewer` before opening the PR 🔲; `@claude review` on the PR | Owner reads findings |
+| **G2 Build** | Every PR | **Hard** | Stop hook locally ✅; CI required check `ci-complete` ✅ (tests, typecheck, lint, secret scan, dependency audit) with branch protection | CI |
+| **G3 Review** | Every PR | Soft, independent | `code-reviewer` before opening the PR ✅; `@claude review` on the PR | Owner reads findings |
 | **G4 Epic** | Before archive | **Hard** | All scenarios traced to passing tests (section 8), Playwright end-to-end tests in CI (section 9.1), golden-set evals for AI epics (section 9.2); exploratory QA and `/opsx:verify` as extra soft checks | CI plus owner |
 | **G5 Merge** | Every PR | Human | Owner clicks merge; auto mode never merges | **Owner** |
 
@@ -140,7 +140,7 @@ This replaces a hand-maintained feature list with something derived, so there is
 
 - Each scenario in `openspec/specs/**` has an id: `<capability>/<requirement-slug>/<scenario-slug>`.
 - Every test that proves a scenario includes `@spec(<id>)` in its title.
-- A script (`scripts/trace`) 🔲 lists every scenario in the canonical specs and the scenarios of the open change, and fails if any scenario has no test or if a tagged test that existed on `master` was removed.
+- A script (`scripts/trace`) ✅ lists every scenario in the canonical specs and the scenarios of the open change, and fails if any scenario has no test or if a tagged test that existed on `master` was removed. Run `scripts/trace --report` while building (progress; uncovered scenarios do not fail) and plain `scripts/trace` at G4. A scenario id slug is the lowercased heading with non-alphanumerics turned into `-`. It scans every file outside `openspec/`, `.claude/`, `scripts/`, `node_modules/` and build output for `@spec`, `@eval` and `@manual` tags.
 - "Passes" comes from the test run in CI, not from a stored flag, so nobody can flip it by hand.
 
 This protects against the failure noted in the solo-mode review: a later epic loosening an earlier epic's tests.
@@ -171,15 +171,15 @@ Unit tests cannot judge whether coaching advice is good. For epics that change A
 
 ## 10. State: `docs/.phase`
 
-One line, written by a script 🔲 (`scripts/phase`), never by hand or by the model:
+One line, written by a script ✅ (`scripts/phase`), never by hand or by the model:
 
 ```
 change=coach-onboarding-plan-gen epic=E1 phase=building task=3/10 branch=feat/coach-onboarding-plan-gen-2 gate=G2:pass
 ```
 
-Phases: `defining` → `proposed` → `approved` → `building` → `verifying` → `archiving` → `archived`. A `SessionStart` hook 🔲 prints this line and `openspec list` so a new session knows what is in flight without rereading everything. `.phase` records where we are; git and the PR remain the record of what happened.
+Phases: `defining` → `proposed` → `approved` → `building` → `verifying` → `archiving` → `archived`. A `SessionStart` hook ✅ prints this line and `openspec list` so a new session knows what is in flight without rereading everything. `.phase` records where we are; git and the PR remain the record of what happened.
 
-## 11. Hooks (settings in `.claude/settings.json`, 🔲)
+## 11. Hooks (settings in `.claude/settings.json`, ✅)
 
 | Hook | Rule | Why a hook |
 |---|---|---|
@@ -190,9 +190,18 @@ Phases: `defining` → `proposed` → `approved` → `building` → `verifying` 
 
 Keep the set small: a hook is for a rule with zero exceptions; everything else stays in `CLAUDE.md`. Permission deny rules cover merging, pushing to `master`, deploying, and reading secret files.
 
+### 11.1 What is built (hooks and deny rules)
+
+Files: `.claude/settings.json`, `.claude/hooks/{guard-edit,stop-check,session-start}.sh`. Known limits, accepted for now:
+- The edit guard sees only the Edit, Write and NotebookEdit tools, and only absolute paths. A shell command such as `sed -i` bypasses it; CI and review are the backstop. It refuses every edit if `jq` is missing, and blocks edits to `docs/.phase`.
+- The Stop hook runs only when files outside `docs/`, `openspec/`, `.claude/`, `scripts/` differ from the merge-base with `origin/master` (committed or not), and does nothing until a `package.json` exists. Timeout 300 s.
+- Deny rules match command text. They cover `gh pr merge`, pushes naming `master`, force pushes, `gh workflow run`, `gh secret`, `vercel`, and reading `.env`/`.pem`/`.key` files. The `.env` rules cover the Read tool, not `cat` through Bash. A bare `git push` while on `master` is not matched; branch protection (admins not enforced) is what stops it. The model cannot run `scripts/phase set phase=defining` or `phase=proposed` (deny rule); it can still move the phase forward, and nothing stops it from setting `archiving`, which G4 and the owner's merge cover.
+- `scripts/trace` does not yet understand `## REMOVED Requirements` in delta specs; handle it in the first change that removes a requirement.
+- To fix a typo in a frozen file, the owner runs `scripts/phase set phase=defining`, edits, then sets the phase back.
+
 ## 12. Reviewers
 
-Both are subagents in `.claude/agents/` 🔲 with `tools: Read, Grep, Glob` only: they can read and report, not edit. They start with no memory of how the work was done, which is the point.
+Both are subagents in `.claude/agents/` ✅ with `tools: Read, Grep, Glob` only: they can read and report, not edit. They start with no memory of how the work was done, which is the point.
 
 - **`design-reviewer` (G0, G1):** checks the epic brief and artifacts against section 6 and three lenses adapted from the course's evaluate-spec: product (problem, scope, out of scope, rules), testability (every requirement observable, error and edge cases present), and design (components, contracts, constraints). Output: findings ranked by severity, ending with a verdict. Soft gate: it informs the owner, it does not approve.
 - **`code-reviewer` (G3):** compares the diff against the change's specs and design: scenarios covered by tagged tests, behavior that is in the diff but not in the spec, security and data-handling problems, and risky patterns. It is told to skip style nits, because a reviewer asked to find problems will always find something. Blocks only on high-severity findings.

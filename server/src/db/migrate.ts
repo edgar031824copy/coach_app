@@ -23,7 +23,8 @@ export async function migrate(db: Db, dir: string): Promise<string[]> {
       await db.query('insert into schema_migrations(name) values ($1)', [name]);
       await db.query('commit');
     } catch (err) {
-      await db.query('rollback');
+      // If the rollback itself fails (a dead connection), keep the original migration error visible.
+      await db.query('rollback').catch(() => undefined);
       throw err;
     }
     applied.push(name);

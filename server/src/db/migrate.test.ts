@@ -56,3 +56,18 @@ describe('migrate', () => {
     expect(done.rows).toEqual([{ name: '001_ok.sql' }]);
   });
 });
+
+describe('migrate error handling', () => {
+  it('rethrows the original migration error even when the rollback itself fails', async () => {
+    write('001_bad.sql', 'select 1;');
+    const broken = {
+      async query(text: string) {
+        if (text.includes('information_schema') || text.includes('schema_migrations')) return { rows: [] };
+        if (text === 'begin') return { rows: [] };
+        if (text === 'rollback') throw new Error('connection lost during rollback');
+        throw new Error('the real migration failure');
+      },
+    };
+    await expect(migrate(broken, dir)).rejects.toThrow('the real migration failure');
+  });
+});

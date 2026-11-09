@@ -1,13 +1,17 @@
 import type { Db } from './types.js';
 
 export const DEFAULT_CALL_LIMIT = 20; // 🔶 specs/cost-cap
+const MAX_CALL_LIMIT = 2_147_483_647; // the largest value of the Postgres int column that holds the count
 
 // MAX_COACH_CALLS_PER_DAY: unset means the default; anything that is not a positive whole number in plain
-// digits stops the server from starting (the caller lets the error crash startup).
+// digits, up to what the int column can hold, stops the server from starting (the caller lets the error crash
+// startup). A larger value would pass startup and then fail every request.
 export function parseCallLimit(value: string | undefined): number {
   if (value === undefined) return DEFAULT_CALL_LIMIT;
-  if (!/^[1-9]\d*$/.test(value)) {
-    throw new Error(`MAX_COACH_CALLS_PER_DAY must be a positive whole number, got "${value}".`);
+  if (!/^[1-9]\d*$/.test(value) || value.length > 10 || Number(value) > MAX_CALL_LIMIT) {
+    throw new Error(
+      `MAX_COACH_CALLS_PER_DAY must be a positive whole number up to ${MAX_CALL_LIMIT}, got "${value}".`,
+    );
   }
   return Number(value);
 }

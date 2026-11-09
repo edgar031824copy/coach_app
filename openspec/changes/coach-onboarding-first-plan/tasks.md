@@ -48,7 +48,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: sequential unit tests with a fake clock.
   - Scenarios: `cost-cap/daily-cap/default-limit`, `cost-cap/daily-cap/invalid-limit-setting`, `cost-cap/what-counts-toward-the-cap/new-day-resets-the-count`.
 - [x] 3.4 Add a Postgres service container to CI and a concurrency test that fires two reservations with one call left; skip it locally when no test database is configured.
-  - Note: the service container itself was added in 3.1's PR, because every database test now uses real Postgres; this task keeps the concurrency test and the 20-run loop.
+  - Note: the service container itself was added in 3.1's PR, because every database test now uses real Postgres; this task keeps the concurrency test and the 20-run loop. The "skip it locally when no test database is configured" part is superseded: with all database tests on real Postgres, a missing local database fails loudly with instructions instead of skipping, so the concurrency test can never be skipped silently.
   - Done when: in CI exactly one of two simultaneous reservations succeeds, repeatedly (run the test 20 times in a loop).
   - Test plan: the loop test itself, against real Postgres.
   - Scenarios: `cost-cap/cap-holds-under-concurrency/two-requests-with-one-call-left`.

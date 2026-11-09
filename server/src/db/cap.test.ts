@@ -21,10 +21,19 @@ describe('parseCallLimit', () => {
     expect(parseCallLimit(undefined)).toBe(20);
   });
 
-  it('honors a valid setting', () => {
+  it('honors a valid setting, up to the largest value Postgres int accepts', () => {
     expect(parseCallLimit('3')).toBe(3);
     expect(parseCallLimit('100')).toBe(100);
+    expect(parseCallLimit('2147483647')).toBe(2147483647);
   });
+
+  // The counter column is an int: a larger limit would pass startup and then fail every request.
+  it.each(['2147483648', '99999999999', '9007199254740993'])(
+    'refuses a limit too large for the int column: "%s" @spec(cost-cap/daily-cap/invalid-limit-setting)',
+    (value) => {
+      expect(() => parseCallLimit(value)).toThrow(/MAX_COACH_CALLS_PER_DAY/);
+    },
+  );
 
   it.each(['0', '-1', 'abc', '1.5', '', ' 5', '5 ', '5x', '1e3', '+5', '007'])(
     'refuses a setting that is not a positive integer: "%s" @spec(cost-cap/daily-cap/invalid-limit-setting)',

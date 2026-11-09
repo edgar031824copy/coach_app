@@ -12,7 +12,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: both a valid and an invalid sample parse as expected for each schema; `server/` compiles against `shared/`; the server build compiles `shared` first and `node server/dist/index.js` starts from a fresh checkout.
   - Test plan: unit tests with one accepted and one rejected sample per schema.
   - Scenarios: none (foundation for groups 2 to 6).
-- [ ] 1.3 Extend `.github/workflows/ci.yml` with typecheck, lint, and test steps for every package that exists, plus a clean build from a fresh checkout with the commands Render will use (`npm ci && npm run build -w server`); `ci-complete` depends on them.
+- [x] 1.3 Extend `.github/workflows/ci.yml` with typecheck, lint, and test steps for every package that exists, plus a clean build from a fresh checkout with the commands Render will use (`npm ci && npm run build -w server`); `ci-complete` depends on them.
   - Done when: the PR's CI is green, and a deliberately failing test (removed before merge) turns `ci-complete` red.
   - Test plan: observe both runs on the PR; keep the red run's link in the PR description.
   - Scenarios: none (harness).

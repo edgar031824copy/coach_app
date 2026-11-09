@@ -2,7 +2,7 @@ name: CI
 
 # One required check for branch protection: `ci-complete`.
 # Jobs that do not apply yet (no package.json) are skipped; a skipped job counts as a pass,
-# a failed or cancelled job fails ci-complete. Typecheck, lint and tests are added by E1's scaffolding tasks.
+# a failed or cancelled job fails ci-complete.
 
 on:
   pull_request:
@@ -54,9 +54,50 @@ jobs:
             (cd "$dir" && npm audit --audit-level=high)
           done
 
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # scripts/trace compares with origin/master
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Traceability (progress report)
+        run: node scripts/trace --report
+
+  # The commands Render will use, from a fresh checkout, then start the result and call /health.
+  clean-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm run build -w server
+      - name: Start the built server and check /health
+        run: |
+          PORT=3111 node server/dist/index.js &
+          pid=$!
+          for i in $(seq 1 20); do
+            curl -sf --max-time 1 http://localhost:3111/health && break
+            sleep 0.5
+          done
+          curl -sf http://localhost:3111/health | grep -q '"status":"ok"'
+          kill $pid
+
   ci-complete:
     if: always()
-    needs: [secret-scan, dependency-audit]
+    needs: [secret-scan, dependency-audit, checks, clean-build]
     runs-on: ubuntu-latest
     steps:
       - name: Require every needed job to succeed or be skipped

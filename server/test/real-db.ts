@@ -24,12 +24,20 @@ export async function realClient() {
   const schema = `t_${Math.random().toString(36).slice(2, 10)}`;
   await client.query(`create schema ${schema}`);
   await client.query(`set search_path to ${schema}`);
+  // A pool on the same schema, for tests that need several connections at once (concurrency).
+  const pools: pg.Pool[] = [];
+  const pool = (max: number) => {
+    const p = new pg.Pool({ connectionString: url, max, options: `-c search_path=${schema}` });
+    pools.push(p);
+    return p;
+  };
   const cleanup = async () => {
+    await Promise.all(pools.map((p) => p.end()));
     await client.query('reset search_path');
     await client.query(`drop schema ${schema} cascade`);
     await client.end();
   };
-  return { client, cleanup };
+  return { client, pool, cleanup };
 }
 
 // A fresh schema with the real migrations applied: what the store and cap tests start from.

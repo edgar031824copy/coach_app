@@ -47,7 +47,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: at the limit the reservation returns "denied"; a new UTC day resets; `MAX_COACH_CALLS_PER_DAY` is honored.
   - Test plan: sequential unit tests with a fake clock.
   - Scenarios: `cost-cap/daily-cap/default-limit`, `cost-cap/daily-cap/invalid-limit-setting`, `cost-cap/what-counts-toward-the-cap/new-day-resets-the-count`.
-- [ ] 3.4 Add a Postgres service container to CI and a concurrency test that fires two reservations with one call left; skip it locally when no test database is configured.
+- [x] 3.4 Add a Postgres service container to CI and a concurrency test that fires two reservations with one call left; skip it locally when no test database is configured.
   - Note: the service container itself was added in 3.1's PR, because every database test now uses real Postgres; this task keeps the concurrency test and the 20-run loop.
   - Done when: in CI exactly one of two simultaneous reservations succeeds, repeatedly (run the test 20 times in a loop).
   - Test plan: the loop test itself, against real Postgres.

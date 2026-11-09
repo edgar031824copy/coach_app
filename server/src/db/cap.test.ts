@@ -73,3 +73,44 @@ describe('call counter', () => {
     expect(await counter.reserveCall()).toBe(1);
   });
 });
+
+// Task 3.4: the atomic upsert holds under real concurrency (several connections, same database).
+// A loop of 20 rounds, each on its own UTC day so every round is a fresh race.
+describe('call counter under concurrency', () => {
+  const daysFrom = (start: string, n: number) =>
+    Array.from({ length: n }, (_, i) => new Date(Date.parse(start) + i * 86_400_000));
+
+  it('lets only one of two simultaneous requests through when one call is left, 20 times @spec(cost-cap/cap-holds-under-concurrency/two-requests-with-one-call-left)', async () => {
+    // At the endpoint the loser gets 429 daily_limit_reached (task 5.1); here the counter returns null.
+    const pool = db.pool(4);
+    for (const day of daysFrom('2026-12-01T12:00:00Z', 20)) {
+      const counter = createCallCounter(pool, { limit: 3, now: () => day });
+      await counter.reserveCall();
+      await counter.reserveCall(); // two used, one left
+      const results = await Promise.all([counter.reserveCall(), counter.reserveCall()]);
+      expect(results.filter((r) => r !== null)).toEqual([3]);
+      expect(results.filter((r) => r === null)).toHaveLength(1);
+    }
+    const { rows } = await db.client.query('select max(calls)::int as most from coach_call_counts');
+    expect(rows[0]?.most).toBe(3);
+  });
+
+  it('lets exactly one of two through when both race to create the first row of the day, 20 times', async () => {
+    const pool = db.pool(4);
+    for (const day of daysFrom('2027-01-01T12:00:00Z', 20)) {
+      const counter = createCallCounter(pool, { limit: 1, now: () => day });
+      const results = await Promise.all([counter.reserveCall(), counter.reserveCall()]);
+      expect(results.filter((r) => r === 1)).toHaveLength(1);
+      expect(results.filter((r) => r === null)).toHaveLength(1);
+    }
+  });
+
+  it('never exceeds the limit with many simultaneous requests', async () => {
+    const pool = db.pool(12);
+    const counter = createCallCounter(pool, { limit: 5, now: () => new Date('2027-02-01T12:00:00Z') });
+    const results = await Promise.all(Array.from({ length: 12 }, () => counter.reserveCall()));
+    expect(results.filter((r) => r !== null).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(results.filter((r) => r === null)).toHaveLength(7);
+    expect((await db.client.query('select calls from coach_call_counts')).rows).toEqual([{ calls: 5 }]);
+  });
+});

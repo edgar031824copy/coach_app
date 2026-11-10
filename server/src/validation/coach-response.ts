@@ -42,7 +42,49 @@ export function validateDeclaredDays(onboarding: Onboarding, response: CoachResp
   return violations;
 }
 
-// All rules, in one pass. Pure: no I/O. Later tasks add the combined-load note, volume guard, import and safety rules.
+// Every day with both a running and a CrossFit session needs a non-empty note, whatever the source of each.
+export function validateCombinedLoadNote(_onboarding: Onboarding, response: CoachResponse): Violation[] {
+  const violations: Violation[] = [];
+  for (const { day, sessions, combinedLoadNote } of response.plan.days) {
+    const both = sessions.some((s) => s.discipline === 'running') && sessions.some((s) => s.discipline === 'crossfit');
+    if (both && (combinedLoadNote === null || combinedLoadNote.trim() === '')) {
+      violations.push({ rule: 'combined-load-note', message: `${day} has both a running and a CrossFit session but no combined-load note.` });
+    }
+  }
+  return violations;
+}
+
+// The most sessions a discipline may have in a week, from the stated weekly count: the larger of 1.3 times the
+// count (rounded down) and the count plus 2 (🔶 specs/plan-generation). Integer math, so no float surprises.
+export function weeklySessionLimit(stated: number): number {
+  return Math.max(Math.floor((13 * stated) / 10), stated + 2);
+}
+
+// Only when the athlete stated their weekly training and no running plan was pasted (a pasted plan is the athlete's
+// own, and is never limited). Each discipline is checked on its own. Running km is input to the coach, not validated.
+export function validateVolumeGuard(onboarding: Onboarding, response: CoachResponse): Violation[] {
+  if (onboarding.weeklyTraining === null || onboarding.existingRunningPlan !== null) return [];
+  const violations: Violation[] = [];
+  const stated = {
+    running: onboarding.weeklyTraining.runningSessions,
+    crossfit: onboarding.weeklyTraining.crossfitSessions,
+  };
+  for (const discipline of ['running', 'crossfit'] as const) {
+    const planned = response.plan.days.reduce((n, d) => n + d.sessions.filter((s) => s.discipline === discipline).length, 0);
+    const limit = weeklySessionLimit(stated[discipline]);
+    if (planned > limit) {
+      violations.push({ rule: 'volume-guard', message: `The plan has ${planned} ${discipline} sessions; at most ${limit} are allowed for a stated ${stated[discipline]} a week.` });
+    }
+  }
+  return violations;
+}
+
+// All rules, in one pass. Pure: no I/O. Later tasks add the import and safety rules.
 export function validateCoachResponse(onboarding: Onboarding, response: CoachResponse): Violation[] {
-  return [...validateStructure(onboarding, response), ...validateDeclaredDays(onboarding, response)];
+  return [
+    ...validateStructure(onboarding, response),
+    ...validateDeclaredDays(onboarding, response),
+    ...validateCombinedLoadNote(onboarding, response),
+    ...validateVolumeGuard(onboarding, response),
+  ];
 }

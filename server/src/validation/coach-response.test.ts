@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { CoachResponse, Day } from 'shared';
-import { validateCoachResponse } from './coach-response.js';
+import { validateCoachResponse, weeklySessionLimit } from './coach-response.js';
+import type { Session } from 'shared';
 import { ALL_DAYS, PASTE, onboardingWith, responseWith, session } from '../../test/fixtures.js';
 
 const rules = (violations: { rule: string }[]) => violations.map((v) => v.rule);
@@ -123,5 +124,105 @@ describe('coach sessions on declared days only', () => {
     const [violation] = validateCoachResponse(onboarding, responseWith({ mon: [cf()] }));
     expect(violation?.message).toMatch(/mon/);
     expect(violation?.message).toMatch(/crossfit/i);
+  });
+});
+
+// ---- Task 4.2: combined-load note and volume guard ----
+
+describe('combined-load note', () => {
+  const onboarding = onboardingWith();
+
+  it('rejects a day with running and CrossFit and no note @spec(plan-generation/combined-load-note/both-disciplines-on-one-day)', () => {
+    const response = responseWith({ mon: [run(), cf()] });
+    expect(rules(validateCoachResponse(onboarding, response))).toEqual(['combined-load-note']);
+  });
+
+  it.each([null, '', '   '])('treats the note %j as missing @spec(plan-generation/combined-load-note/both-disciplines-on-one-day)', (note) => {
+    const response = responseWith({ mon: [run(), cf()] });
+    response.plan.days[0]!.combinedLoadNote = note;
+    expect(rules(validateCoachResponse(onboarding, response))).toEqual(['combined-load-note']);
+  });
+
+  it('accepts the day when it has a non-empty note @spec(plan-generation/combined-load-note/both-disciplines-on-one-day)', () => {
+    const response = responseWith({ mon: [run(), cf()] }, { notes: { mon: 'Keep the run easy before CrossFit' } });
+    expect(validateCoachResponse(onboarding, response)).toEqual([]);
+  });
+
+  it('needs no note on a day with one discipline, even with several sessions', () => {
+    const response = responseWith({ mon: [run(), run()], tue: [cf(), cf()] });
+    expect(validateCoachResponse(onboarding, response)).toEqual([]);
+  });
+
+  it('requires a note when a pasted running session shares a day with a coach CrossFit session @spec(plan-generation/combined-load-note/pasted-running-session-shares-a-day-with-a-coach-crossfit-session)', () => {
+    const withPaste = onboardingWith({ existingRunningPlan: PASTE, pastedPlanWeek: 1 });
+    const noNote = responseWith({ mon: [run('athlete'), cf('coach')] });
+    expect(rules(validateCoachResponse(withPaste, noNote))).toEqual(['combined-load-note']);
+    const withNote = responseWith({ mon: [run('athlete'), cf('coach')] }, { notes: { mon: 'Run first, then a lighter WOD' } });
+    expect(validateCoachResponse(withPaste, withNote)).toEqual([]);
+  });
+
+  it('applies whatever the source of each session', () => {
+    const withPaste = onboardingWith({ existingRunningPlan: PASTE, pastedPlanWeek: 1 });
+    expect(rules(validateCoachResponse(withPaste, responseWith({ mon: [run('athlete'), cf('athlete')] })))).toEqual(['combined-load-note']);
+  });
+
+  it('reports each day that lacks a note', () => {
+    const response = responseWith({ mon: [run(), cf()], wed: [run(), cf()] }, { notes: { wed: 'ok' } });
+    const found = validateCoachResponse(onboarding, response);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message).toMatch(/mon/);
+  });
+});
+
+describe('volume guard from stated weekly training', () => {
+  // The limit is the larger of 1.3 times the stated count (rounded down) and the stated count plus 2.
+  it.each([
+    [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 9], [8, 10], [9, 11], [10, 13], [11, 14], [14, 18],
+  ])('a stated count of %i allows at most %i sessions a week', (stated, limit) => {
+    expect(weeklySessionLimit(stated)).toBe(limit);
+  });
+
+  // `n` sessions of one discipline, spread over mon to sat (sun stays a rest day).
+  const sessionsOf = (discipline: Session['discipline'], n: number): Partial<Record<(typeof ALL_DAYS)[number], Session[]>> => {
+    const week: Partial<Record<(typeof ALL_DAYS)[number], Session[]>> = {};
+    for (let i = 0; i < n; i++) (week[ALL_DAYS[i % 6]!] ??= []).push(session(discipline));
+    return week;
+  };
+  const training = (runningSessions: number, crossfitSessions: number, runningKm: number | null = null) =>
+    onboardingWith({ weeklyTraining: { runningSessions, crossfitSessions, runningKm } });
+
+  it.each([[3, 5], [10, 13], [0, 2], [14, 18]])(
+    'accepts running sessions at the limit (stated %i, planned %i) @spec(plan-generation/volume-guard-from-stated-weekly-training/within-the-limit)',
+    (stated, planned) => {
+      expect(validateCoachResponse(training(stated, 99), responseWith(sessionsOf('running', planned)))).toEqual([]);
+    },
+  );
+
+  it.each([[3, 6], [10, 14], [0, 3], [14, 19]])(
+    'rejects running sessions above the limit (stated %i, planned %i) @spec(plan-generation/volume-guard-from-stated-weekly-training/above-the-limit)',
+    (stated, planned) => {
+      expect(rules(validateCoachResponse(training(stated, 99), responseWith(sessionsOf('running', planned))))).toEqual(['volume-guard']);
+    },
+  );
+
+  it('applies to CrossFit separately from running @spec(plan-generation/volume-guard-from-stated-weekly-training/above-the-limit)', () => {
+    const response = responseWith(sessionsOf('crossfit', 6));
+    const found = validateCoachResponse(training(99, 3), response);
+    expect(rules(found)).toEqual(['volume-guard']);
+    expect(found[0]?.message).toMatch(/crossfit/i);
+    expect(validateCoachResponse(training(99, 3), responseWith(sessionsOf('crossfit', 5)))).toEqual([]);
+  });
+
+  it('is off when no weekly training was given', () => {
+    expect(validateCoachResponse(onboardingWith(), responseWith(sessionsOf('running', 12)))).toEqual([]);
+  });
+
+  it('is off when a running plan was pasted', () => {
+    const withPaste = onboardingWith({ existingRunningPlan: PASTE, pastedPlanWeek: 1, weeklyTraining: { runningSessions: 1, crossfitSessions: 1, runningKm: null } });
+    expect(validateCoachResponse(withPaste, responseWith(sessionsOf('running', 8)))).toEqual([]);
+  });
+
+  it('does not validate running km (it is input to the coach only)', () => {
+    expect(validateCoachResponse(training(3, 3, 9999), responseWith(sessionsOf('running', 3)))).toEqual([]);
   });
 });

@@ -151,7 +151,20 @@ function maxMatching(left: number, right: number, compatible: (l: number, r: num
   return count;
 }
 
-// All rules, in one pass. Pure: no I/O. Task 4.4 adds the safety rules.
+// Safety note (PRD Principle 6): pain reported needs a note that says something; no pain means no note at all.
+// Whether the note's wording is right (not a clinician, no diagnosis, see a professional) is model judgment,
+// checked by the local evals, not here.
+export function validateSafety(_onboarding: Onboarding, response: CoachResponse): Violation[] {
+  const note = response.plan.safetyNote;
+  if (response.painReported) {
+    return note === null || note.trim() === ''
+      ? [{ rule: 'safety-note-missing', message: 'Pain was reported, so the plan needs a safety note.' }]
+      : [];
+  }
+  return note === null ? [] : [{ rule: 'safety-note-without-pain', message: 'No pain was reported, so the safety note must be null.' }];
+}
+
+// All rules, in one pass. Pure: no I/O.
 export function validateCoachResponse(onboarding: Onboarding, response: CoachResponse): Violation[] {
   return [
     ...validateStructure(onboarding, response),
@@ -159,5 +172,6 @@ export function validateCoachResponse(onboarding: Onboarding, response: CoachRes
     ...validateCombinedLoadNote(onboarding, response),
     ...validateVolumeGuard(onboarding, response),
     ...validateImportRules(onboarding, response),
+    ...validateSafety(onboarding, response),
   ];
 }

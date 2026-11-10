@@ -399,3 +399,46 @@ describe('pasted plan rules', () => {
     });
   });
 });
+
+// ---- Task 4.4: safety validators ----
+// Whether a note's wording is right (not a clinician, no diagnosis, see a professional) is model judgment and is
+// checked by the local evals (task 7.2), not here. These tests check only the pain and note relationship.
+
+describe('safety note when pain is reported', () => {
+  const onboarding = onboardingWith({ runningDays: ['mon'], crossfitDays: [], injuries: 'knee sore today' });
+  const NOTE = 'I am not a clinician and cannot diagnose; please see a qualified professional.';
+  const response = (painReported: boolean, safetyNote: string | null) =>
+    responseWith({ mon: [run()] }, { painReported, safetyNote });
+
+  it('accepts pain reported with a note @spec(safety/safety-note-when-pain-is-reported/pain-reported-with-a-note)', () => {
+    expect(validateCoachResponse(onboarding, response(true, NOTE))).toEqual([]);
+  });
+
+  it('rejects pain reported without a note @spec(safety/safety-note-when-pain-is-reported/pain-reported-without-a-note)', () => {
+    expect(rules(validateCoachResponse(onboarding, response(true, null)))).toEqual(['safety-note-missing']);
+  });
+
+  it.each(['', '   '])('treats a blank note (%j) as no note when pain is reported @spec(safety/safety-note-when-pain-is-reported/pain-reported-without-a-note)', (blank) => {
+    expect(rules(validateCoachResponse(onboarding, response(true, blank)))).toEqual(['safety-note-missing']);
+  });
+
+  it('rejects a note when no pain is reported @spec(safety/safety-note-when-pain-is-reported/note-without-reported-pain)', () => {
+    expect(rules(validateCoachResponse(onboarding, response(false, NOTE)))).toEqual(['safety-note-without-pain']);
+  });
+
+  it('rejects any non-null note without pain, even an empty one', () => {
+    expect(rules(validateCoachResponse(onboarding, response(false, '')))).toEqual(['safety-note-without-pain']);
+  });
+
+  it('accepts no pain with a null note', () => {
+    expect(validateCoachResponse(onboarding, response(false, null))).toEqual([]);
+  });
+
+  it('applies with a pasted plan too, alongside the import rules', () => {
+    const withPaste = onboardingWith({ existingRunningPlan: PASTE, pastedPlanWeek: 1, runningDays: [], crossfitDays: [], injuries: 'sore' });
+    const missingNote = responseWith({ mon: [session('running', 'athlete', 'easy', 'Easy 5 km')] }, { painReported: true });
+    expect(rules(validateCoachResponse(withPaste, missingNote))).toEqual(['safety-note-missing']);
+    const withNote = responseWith({ mon: [session('running', 'athlete', 'easy', 'Easy 5 km')] }, { painReported: true, safetyNote: NOTE });
+    expect(validateCoachResponse(withPaste, withNote)).toEqual([]);
+  });
+});

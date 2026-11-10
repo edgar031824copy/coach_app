@@ -67,7 +67,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: every listed scenario passes, including week 13 of a 12-week paste returning `plan_unreadable`.
   - Test plan: unit tests with fake coach responses; one test where the fake obeys the injected instruction.
   - Scenarios: `running-plan-import/only-the-chosen-week-is-used/no-rows-for-the-chosen-week`, `running-plan-import/pasted-sessions-are-kept-unchanged/*` (including identical descriptions matched one to one), `running-plan-import/unreadable-paste/*`, `running-plan-import/coach-adds-only-crossfit-sessions/*`, `running-plan-import/pasted-text-is-untrusted-data/*`. The two model-dependent scenarios (chosen week, flexible days) are eval-verified in task 7.2.
-- [ ] 4.4 Implement the safety validators: `painReported` true needs a non-null `safetyNote`; false needs it null.
+- [x] 4.4 Implement the safety validators: `painReported` true needs a non-null `safetyNote`; false needs it null.
   - Done when: both rejection cases and both accept cases pass.
   - Test plan: four unit tests with fake responses.
   - Scenarios: `safety/safety-note-when-pain-is-reported/pain-reported-with-a-note`, `safety/safety-note-when-pain-is-reported/pain-reported-without-a-note`, `safety/safety-note-when-pain-is-reported/note-without-reported-pain`.

@@ -63,7 +63,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: a shared day without a note is rejected (pasted running plus coach CrossFit included); the guard accepts at the limit and rejects above it.
   - Test plan: unit tests at the boundary values (1.3 times, plus 2).
   - Scenarios: `plan-generation/combined-load-note/*`, `plan-generation/volume-guard-from-stated-weekly-training/*`.
-- [ ] 4.3 Implement the pasted-plan rules: unchanged sessions, `dayOptions` placement, only CrossFit added, empty `understoodRunning` as `plan_unreadable`, no athlete sessions without a paste, and a hostile fake coach that obeys an injected instruction.
+- [x] 4.3 Implement the pasted-plan rules: unchanged sessions, `dayOptions` placement, only CrossFit added, empty `understoodRunning` as `plan_unreadable`, no athlete sessions without a paste, and a hostile fake coach that obeys an injected instruction.
   - Done when: every listed scenario passes, including week 13 of a 12-week paste returning `plan_unreadable`.
   - Test plan: unit tests with fake coach responses; one test where the fake obeys the injected instruction.
   - Scenarios: `running-plan-import/only-the-chosen-week-is-used/no-rows-for-the-chosen-week`, `running-plan-import/pasted-sessions-are-kept-unchanged/*` (including identical descriptions matched one to one), `running-plan-import/unreadable-paste/*`, `running-plan-import/coach-adds-only-crossfit-sessions/*`, `running-plan-import/pasted-text-is-untrusted-data/*`. The two model-dependent scenarios (chosen week, flexible days) are eval-verified in task 7.2.

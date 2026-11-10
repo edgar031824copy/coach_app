@@ -79,12 +79,85 @@ export function validateVolumeGuard(onboarding: Onboarding, response: CoachRespo
   return violations;
 }
 
-// All rules, in one pass. Pure: no I/O. Later tasks add the import and safety rules.
+// Pasted-plan rules (specs/running-plan-import). The server never parses the paste: the coach reports what it read
+// (`understoodRunning`) and these rules check the plan against that report, so pasted sessions stay exactly as written.
+// A misread paste cannot be detected here (known limit, design.md Decision 6).
+export function validateImportRules(onboarding: Onboarding, response: CoachResponse): Violation[] {
+  const understood = response.understoodRunning;
+  const placed = response.plan.days.flatMap((d) => d.sessions.map((s) => ({ ...s, day: d.day })));
+  const athlete = placed.filter((s) => s.source === 'athlete');
+
+  if (onboarding.existingRunningPlan === null) {
+    // No paste: nothing was read, and nothing in the plan may claim to come from the athlete.
+    if (understood.length === 0 && athlete.length === 0) return [];
+    return [{ rule: 'import-without-paste', message: 'No running plan was pasted, so there must be no understood running sessions and no athlete sessions.' }];
+  }
+
+  const violations: Violation[] = [];
+  if (understood.length === 0) {
+    const week = onboarding.pastedPlanWeek ?? 1;
+    violations.push({ rule: 'plan-unreadable', message: `No running sessions found for week ${week} in your pasted plan.` });
+  }
+
+  // With a pasted plan the coach adds only CrossFit sessions (their days are checked by the declared-days rule).
+  if (placed.some((s) => s.source === 'coach' && s.discipline === 'running')) {
+    violations.push({ rule: 'coach-running-with-paste', message: 'The coach added a running session to a pasted plan; it may add only CrossFit sessions.' });
+  }
+
+  // Every athlete session must be one the coach said it read, on a day that row allows, matched one to one.
+  const matched = maxMatching(
+    athlete.length,
+    understood.length,
+    (a, e) => {
+      const s = athlete[a]!;
+      const u = understood[e]!;
+      return s.discipline === 'running' && s.description === u.description && u.dayOptions.includes(s.day);
+    },
+  );
+  if (athlete.length !== understood.length || matched !== athlete.length) {
+    const why =
+      athlete.length > understood.length
+        ? 'The plan has more athlete sessions than the coach reported reading.'
+        : athlete.length < understood.length
+          ? 'A session from the pasted plan is missing from the plan.'
+          : 'A pasted running session was changed or placed on a day its row does not allow.';
+    violations.push({ rule: 'pasted-sessions', message: why });
+  }
+  return violations;
+}
+
+// `plan_unreadable` wins over `invalid_coach_response` when both apply (design.md Decision 4).
+export function isPlanUnreadable(violations: Violation[]): boolean {
+  return violations.some((v) => v.rule === 'plan-unreadable');
+}
+
+// Size of a largest one-to-one pairing between `left` sessions and `right` entries (augmenting paths). A greedy
+// first-come match can fail when an entry is more restricted than another with the same description.
+function maxMatching(left: number, right: number, compatible: (l: number, r: number) => boolean): number {
+  const owner: number[] = Array(right).fill(-1);
+  const tryAssign = (l: number, seen: boolean[]): boolean => {
+    for (let r = 0; r < right; r++) {
+      if (!compatible(l, r) || seen[r]) continue;
+      seen[r] = true;
+      if (owner[r] === -1 || tryAssign(owner[r]!, seen)) {
+        owner[r] = l;
+        return true;
+      }
+    }
+    return false;
+  };
+  let count = 0;
+  for (let l = 0; l < left; l++) if (tryAssign(l, Array(right).fill(false))) count++;
+  return count;
+}
+
+// All rules, in one pass. Pure: no I/O. Task 4.4 adds the safety rules.
 export function validateCoachResponse(onboarding: Onboarding, response: CoachResponse): Violation[] {
   return [
     ...validateStructure(onboarding, response),
     ...validateDeclaredDays(onboarding, response),
     ...validateCombinedLoadNote(onboarding, response),
     ...validateVolumeGuard(onboarding, response),
+    ...validateImportRules(onboarding, response),
   ];
 }

@@ -28,7 +28,8 @@ export const session = (
   discipline: Session['discipline'],
   source: Session['source'] = 'coach',
   intensity: Session['intensity'] = 'easy',
-): Session => ({ discipline, description: `${discipline} session`, intensity, source });
+  description = `${discipline} session`,
+): Session => ({ discipline, description, intensity, source });
 
 // An onboarding with overrides (days, paste, weeklyTraining ...), parsed so defaults are filled in.
 export const onboardingWith = (change: Record<string, unknown> = {}): Onboarding =>
@@ -45,11 +46,19 @@ export const onboardingWith = (change: Record<string, unknown> = {}): Onboarding
 export const PASTE = 'Week 1: Mon 5 km easy, Wed 8 km tempo';
 
 // A seven-day response: sessions per day (default none), optional combined-load notes, and any extra fields.
+// Unless a test says otherwise, `understoodRunning` is what the coach would report having read: one entry per
+// athlete running session, allowing exactly the day it sits on (so a consistent pasted-plan response needs no extra setup).
 export const responseWith = (
   sessions: Partial<Record<Day, Session[]>> = {},
   extra: { notes?: Partial<Record<Day, string>>; understoodRunning?: CoachResponse['understoodRunning']; painReported?: boolean; safetyNote?: string | null } = {},
 ): CoachResponse => ({
-  understoodRunning: extra.understoodRunning ?? [],
+  understoodRunning:
+    extra.understoodRunning ??
+    ALL_DAYS.flatMap((day) =>
+      (sessions[day] ?? [])
+        .filter((s) => s.source === 'athlete' && s.discipline === 'running')
+        .map((s) => ({ description: s.description, dayOptions: [day] })),
+    ),
   painReported: extra.painReported ?? false,
   plan: {
     days: ALL_DAYS.map((day) => ({ day, sessions: sessions[day] ?? [], combinedLoadNote: extra.notes?.[day] ?? null })),

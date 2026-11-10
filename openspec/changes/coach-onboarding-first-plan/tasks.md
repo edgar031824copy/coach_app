@@ -55,7 +55,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 4. Coach response validation
 
-- [ ] 4.1 Implement structure validators: seven distinct days, at least one rest day (unless pasted sessions fill the week), coach sessions only on declared days.
+- [x] 4.1 Implement structure validators: seven distinct days, at least one rest day (unless pasted sessions fill the week), coach sessions only on declared days.
   - Done when: each scenario passes with a fake coach response.
   - Test plan: unit tests per scenario, including six days, duplicate days, and a pasted plan covering all seven days.
   - Scenarios: `plan-generation/seven-day-plan/*`, `plan-generation/at-least-one-rest-day/*`, `plan-generation/coach-sessions-on-declared-days-only/*`, `onboarding/required-answers/pasted-plan-without-crossfit-days-is-accepted` (the plan has no coach-added CrossFit sessions).

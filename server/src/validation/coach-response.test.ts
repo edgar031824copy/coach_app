@@ -388,13 +388,13 @@ describe('pasted plan rules', () => {
 
     it('rejects the response when the coach obeys an instruction in the paste @spec(running-plan-import/pasted-text-is-untrusted-data/instruction-inside-the-paste)', async () => {
       const onboarding = pasted({ existingRunningPlan: INJECTED });
-      const response = await hostileCoach.generate(onboarding);
+      const response = (await hostileCoach.generate(onboarding, { today: '2026-11-10' })) as CoachResponse;
       expect(rules(validateCoachResponse(onboarding, response))).toEqual(['pasted-sessions']);
     });
 
     it('accepts the same coach when the paste carries no injected instruction (the check is the rule, not the text)', async () => {
       const onboarding = pasted({ existingRunningPlan: 'Easy 5 km on Monday.' });
-      const response = await hostileCoach.generate(onboarding);
+      const response = (await hostileCoach.generate(onboarding, { today: '2026-11-10' })) as CoachResponse;
       expect(validateCoachResponse(onboarding, response)).toEqual([]);
     });
   });

@@ -1,16 +1,21 @@
 import type { AppDeps } from './app.js';
+import { buildAnthropicClient, createAnthropicCoach } from './coach/anthropic-coach.js';
 import type { CoachClient } from './coach/types.js';
 import type { Config } from './config.js';
 import { createCallCounter } from './db/cap.js';
 import { createPlanStore } from './db/plan-store.js';
 import type { Db } from './db/types.js';
 
-// The coach (the configured mode will pick the real or the fake one). Until the real client (task 5.3) and the fake coach (task 7.1) exist, every call
-// fails, so the endpoint answers "unavailable" (and the call still counts toward the cap).
-function buildCoach(): CoachClient {
+// The coach for the configured mode. Real mode calls the Anthropic API (task 5.3). The fake coach for tests is
+// task 7.1; until then fake mode has a placeholder that fails every call, so the endpoint answers "unavailable"
+// (and the call still counts toward the cap).
+function buildCoach(config: Config): CoachClient {
+  if (config.coachMode === 'real') {
+    return createAnthropicCoach(buildAnthropicClient(config.anthropicApiKey as string), { model: config.coachModel });
+  }
   return {
     async generate() {
-      throw new Error('no coach is implemented yet (tasks 5.3 and 7.1)');
+      throw new Error('the fake coach is not implemented yet (task 7.1)');
     },
   };
 }
@@ -19,7 +24,7 @@ function buildCoach(): CoachClient {
 export function buildDeps(config: Config, db: Db, now?: () => Date): AppDeps {
   const counter = createCallCounter(db, { limit: config.callLimit, now });
   return {
-    coach: buildCoach(),
+    coach: buildCoach(config),
     reserveCall: counter.reserveCall,
     callLimit: config.callLimit,
     store: createPlanStore(db),

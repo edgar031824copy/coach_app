@@ -6,6 +6,7 @@ import { createPlanStore, type PlanStore } from '../src/db/plan-store.js';
 import { migratedClient } from './real-db.js';
 
 export const NOW = new Date('2026-11-10T12:00:00Z');
+export const ORIGIN = 'https://app.example.com';
 
 // The real app wired to real Postgres (a throwaway schema), the real cap counter and the real store, with a fake coach
 // and a fixed clock. Tests look at the tables directly to prove what was and was not saved or counted.
@@ -28,6 +29,7 @@ export async function appHarness(options: {
     store: options.store ?? createPlanStore(db.client),
     now,
     coachTimeoutMs: options.coachTimeoutMs,
+    clientOrigin: ORIGIN,
   });
   return {
     app,

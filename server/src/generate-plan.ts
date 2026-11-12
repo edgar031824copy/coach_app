@@ -1,6 +1,7 @@
 import { CoachResponseSchema, type ApiError, type Onboarding, type PlanResponse } from 'shared';
 import { CoachOutputError, type CoachClient } from './coach/types.js';
 import type { PlanStore } from './db/plan-store.js';
+import { logError } from './log.js';
 import { isPlanUnreadable, validateCoachResponse } from './validation/coach-response.js';
 
 // Everything the generation flow needs from outside, so tests inject fakes (design.md Decisions 3 and 5).
@@ -40,7 +41,7 @@ export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding): 
   try {
     calls = await deps.reserveCall();
   } catch (err) {
-    console.error('cap reservation failed:', (err as Error)?.name);
+    logError('cap reservation failed', err);
     return { status: 500, body: { error: 'server_error', message: 'Something went wrong.' } };
   }
   if (calls === null) {
@@ -67,7 +68,7 @@ export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding): 
     if (err instanceof CoachOutputError) {
       return fail(422, 'invalid_coach_response', `The coach's answer could not be used. ${RETRY}`);
     }
-    console.error('coach call failed:', (err as Error)?.name);
+    logError('coach call failed', err);
     return fail(502, 'coach_unavailable', `The coach is not available right now. ${RETRY}`);
   }
 
@@ -90,7 +91,7 @@ export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding): 
     const record = await deps.store.save(parsed.data.plan, onboarding);
     return { status: 200, body: { ...record, remainingCallsToday } };
   } catch (err) {
-    console.error('saving the plan failed:', (err as Error)?.name);
+    logError('saving the plan failed', err);
     return fail(500, 'server_error', 'Something went wrong.');
   }
 }

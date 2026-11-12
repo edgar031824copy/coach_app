@@ -88,10 +88,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: against a mocked SDK the request has the expected shape, the paste is inside the delimiters, a timeout becomes `coach_unavailable`, and no real call is made in any test.
   - Test plan: unit tests with a mocked SDK; one manual check against the real API, recorded in the PR, that the model id and structured output work (design risk).
   - Scenarios: `plan-generation/distinct-failure-outcomes/coach-timeout`, `running-plan-import/pasted-text-is-untrusted-data/*` (prompt shape).
-- [ ] 5.4 Add configuration, CORS, and logging rules: env vars, only `CLIENT_ORIGIN` allowed, no secret in the repo, and logs that never contain injuries, the paste, or a plan.
+- [x] 5.4 Add configuration, CORS, and logging rules: env vars, only `CLIENT_ORIGIN` allowed, no secret in the repo, and logs that never contain injuries, the paste, or a plan.
   - Done when: a request from another origin gets no CORS permission; the repository secret scan (gitleaks) passes; the server refuses to start without `ANTHROPIC_API_KEY` in real mode (fake mode needs none); a log capture test finds none of the test data.
   - Test plan: supertest with an `Origin` header; a log-capture test with sample injuries text.
   - Scenarios: `deploy/no-secrets-and-restricted-origin/other-origins-are-refused` (the bundle scan is task 6.5).
+  - Done in 5.4 beyond the list: the configuration loader also refuses `COACH_MODE=fake` when `NODE_ENV=production` (task 7.1 keeps the fake coach itself and the end-to-end use of this rule), and `index.ts` is wired (pool, store, cap, SIGTERM). The coach is still a placeholder that fails every call (a valid request answers 502 `coach_unavailable`) until 5.3 (real) and 7.1 (fake).
 
 ## 6. Client
 

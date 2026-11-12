@@ -1,11 +1,30 @@
 import express, { type ErrorRequestHandler } from 'express';
 import type { ApiError } from 'shared';
 import { generatePlan, type GenerateDeps } from './generate-plan.js';
+import { logError } from './log.js';
 import { validateOnboarding } from './validation/onboarding.js';
 
-export type AppDeps = GenerateDeps;
+export type AppDeps = GenerateDeps & { clientOrigin: string };
 
 const BODY_LIMIT = '16kb'; // 🔶 specs/onboarding, free-text length limits
+
+// CORS allows exactly one origin, the client's (specs/deploy: restricted origin). A browser request from any other
+// origin gets no permission header, and its preflight is refused. Requests without an Origin header (curl, the smoke
+// test) are served as usual: CORS is a browser rule, not access control. Never a wildcard.
+function cors(clientOrigin: string): express.RequestHandler {
+  return (req, res, next) => {
+    res.vary('Origin');
+    const origin = req.headers.origin;
+    if (origin === undefined) return next();
+    if (origin !== clientOrigin) return req.method === 'OPTIONS' ? void res.sendStatus(403) : next();
+    res.setHeader('Access-Control-Allow-Origin', clientOrigin);
+    if (req.method !== 'OPTIONS') return next();
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '600');
+    res.sendStatus(204);
+  };
+}
 
 function sendError(res: express.Response, status: number, body: ApiError) {
   res.status(status).json(body);
@@ -30,7 +49,7 @@ const bodyErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
 const fallbackErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 500 ? err.status : 500;
   if (status === 500) {
-    console.error('unhandled error:', err?.name ?? 'Error');
+    logError('unhandled error', err);
     return sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
   }
   sendError(res, status, { error: 'validation_error', message: 'The request could not be read.' });
@@ -38,6 +57,7 @@ const fallbackErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
 export function createApp(deps?: AppDeps) {
   const app = express();
+  if (deps) app.use(cors(deps.clientOrigin)); // first, so error responses carry the header too
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
@@ -68,7 +88,7 @@ export function createApp(deps?: AppDeps) {
     try {
       res.json(await deps.store.latest());
     } catch (err) {
-      console.error('reading the latest plan failed:', (err as Error)?.name);
+      logError('reading the latest plan failed', err);
       sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
     }
   });

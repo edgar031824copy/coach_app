@@ -60,6 +60,19 @@ export function createApp(deps?: AppDeps) {
     );
   });
 
+  // The latest saved plan record, or JSON null. Never calls the coach and never touches the cap.
+  app.get('/api/plan', async (_req, res) => {
+    if (!deps) {
+      return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' }); // wired in task 5.4
+    }
+    try {
+      res.json(await deps.store.latest());
+    } catch (err) {
+      console.error('reading the latest plan failed:', (err as Error)?.name);
+      sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
+    }
+  });
+
   app.use(bodyErrorHandler); // error handlers go after the routes
   app.use(fallbackErrorHandler);
 

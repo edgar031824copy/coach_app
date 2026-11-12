@@ -1,14 +1,9 @@
 import express, { type ErrorRequestHandler } from 'express';
 import type { ApiError } from 'shared';
-import type { CoachClient } from './coach/types.js';
+import { generatePlan, type GenerateDeps } from './generate-plan.js';
 import { validateOnboarding } from './validation/onboarding.js';
 
-// Everything the app needs from outside, so tests can inject fakes (design.md Decision 3 and 5).
-export interface AppDeps {
-  coach: CoachClient;
-  // Atomic cap reservation (task 3.3): resolves to the day's call count after this call, or null when the cap is reached.
-  reserveCall: () => Promise<number | null>;
-}
+export type AppDeps = GenerateDeps;
 
 const BODY_LIMIT = '16kb'; // 🔶 specs/onboarding, free-text length limits
 
@@ -43,13 +38,11 @@ const fallbackErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
 export function createApp(deps?: AppDeps) {
   const app = express();
-  app.locals.deps = deps; // consumed by the generation flow in task 5.1
-
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
 
-  app.post('/api/plan', express.json({ limit: BODY_LIMIT }), (req, res) => {
+  app.post('/api/plan', express.json({ limit: BODY_LIMIT }), (req, res, next) => {
     const result = validateOnboarding(req.body);
     if (!result.ok) {
       return sendError(res, 400, {
@@ -58,8 +51,13 @@ export function createApp(deps?: AppDeps) {
         fields: result.fields,
       });
     }
-    // Placeholder until task 5.1 (reserve a cap slot, call the coach, validate, save).
-    sendError(res, 501, { error: 'server_error', message: 'Plan generation is not implemented yet.' });
+    if (!deps) {
+      return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' }); // wired in task 5.4
+    }
+    generatePlan(deps, result.value).then(
+      (outcome) => res.status(outcome.status).json(outcome.body),
+      next,
+    );
   });
 
   app.use(bodyErrorHandler); // error handlers go after the routes

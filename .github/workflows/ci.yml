@@ -100,7 +100,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci && npm run build -w server
+      - name: The built server refuses to start without configuration
+        run: |
+          if PORT=3112 node server/dist/index.js; then
+            echo "The server started with no configuration; it must refuse."
+            exit 1
+          fi
       - name: Start the built server and check /health
+        env:
+          # The configuration the server now requires. The database URL is never connected to: /health does not query it.
+          DATABASE_URL: postgres://ci:ci@localhost:5432/unused
+          CLIENT_ORIGIN: http://localhost:5173
+          COACH_MODE: fake
         run: |
           PORT=3111 node server/dist/index.js &
           pid=$!

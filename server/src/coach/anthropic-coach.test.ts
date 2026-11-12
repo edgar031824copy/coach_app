@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import type Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { buildAnthropicClient, createAnthropicCoach } from './anthropic-coach.js';
 import { CoachOutputError } from './types.js';
 import { buildSystemPrompt } from './prompt.js';
@@ -94,9 +94,9 @@ describe('the answer', () => {
     await expect(createAnthropicCoach(client, { model: 'm' }).generate(onboardingWith(), TODAY)).rejects.toBeInstanceOf(CoachOutputError);
   });
 
-  it('reports a parse failure thrown by the SDK as an invalid coach response', async () => {
+  it('reports the SDK\'s parse failure (its own AnthropicError) as an invalid coach response', async () => {
     const { client } = fakeSdk(() => {
-      throw new SyntaxError('Unexpected end of JSON input');
+      throw new Anthropic.AnthropicError('Failed to parse structured output: SyntaxError: Unexpected end of JSON input');
     });
     await expect(createAnthropicCoach(client, { model: 'm' }).generate(onboardingWith(), TODAY)).rejects.toBeInstanceOf(CoachOutputError);
   });
@@ -122,5 +122,92 @@ describe('usage logging', () => {
     expect(logged).toMatch(/input_tokens=1200/);
     expect(logged).toMatch(/output_tokens=800/);
     expect(logged).not.toMatch(/SECRET|session|Run a half/);
+  });
+});
+
+// The real SDK code (parsing, structured output, error classes) with only the network faked. This is what the
+// plain fake above cannot show: the SDK wraps every parse failure in its own AnthropicError, including a cut-off answer.
+describe('with the real SDK and a fake network', () => {
+  const messageBody = (text: string | null, stop_reason: string) => ({
+    id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-sonnet-5-5',
+    content: text === null ? [] : [{ type: 'text', text }],
+    stop_reason, stop_sequence: null,
+    usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+  });
+  const jsonResponse = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  const coachOver = (fetchImpl: (url: unknown, init?: RequestInit) => Promise<Response>, timeoutMs?: number) => {
+    const calls: number[] = [];
+    const client = buildAnthropicClient('sk-ant-not-a-real-key', {
+      fetch: ((url: unknown, init?: RequestInit) => {
+        calls.push(1);
+        return fetchImpl(url, init);
+      }) as typeof fetch,
+      timeoutMs,
+    });
+    return { coach: createAnthropicCoach(client, { model: 'claude-sonnet-5-5' }), calls };
+  };
+  const generate = (coach: ReturnType<typeof createAnthropicCoach>) => coach.generate(onboardingWith(), TODAY);
+
+  it('returns a well-formed answer', async () => {
+    const response = good();
+    const { coach } = coachOver(async () => jsonResponse(messageBody(JSON.stringify(response), 'end_turn')));
+    expect(await generate(coach)).toEqual(response);
+  });
+
+  it('treats a cut-off answer (max_tokens, truncated JSON) as an invalid coach response @spec(plan-generation/distinct-failure-outcomes/malformed-coach-output)', async () => {
+    const cutOff = JSON.stringify(good()).slice(0, 120);
+    const { coach } = coachOver(async () => jsonResponse(messageBody(cutOff, 'max_tokens')));
+    await expect(generate(coach)).rejects.toBeInstanceOf(CoachOutputError);
+  });
+
+  it.each([
+    ['JSON of the wrong shape', '{"plan":"nonsense"}', 'end_turn'],
+    ['text that is not JSON', 'I cannot help with that.', 'end_turn'],
+    ['an empty answer', '', 'end_turn'],
+  ])('treats %s as an invalid coach response @spec(plan-generation/distinct-failure-outcomes/malformed-coach-output)', async (_name, text, stop) => {
+    const { coach } = coachOver(async () => jsonResponse(messageBody(text, stop)));
+    await expect(generate(coach)).rejects.toBeInstanceOf(CoachOutputError);
+  });
+
+  it('treats a refusal as an invalid coach response @spec(plan-generation/distinct-failure-outcomes/malformed-coach-output)', async () => {
+    const { coach } = coachOver(async () => jsonResponse(messageBody(null, 'refusal')));
+    await expect(generate(coach)).rejects.toBeInstanceOf(CoachOutputError);
+  });
+
+  it('never puts the model\'s output into the error it raises', async () => {
+    const { coach } = coachOver(async () => jsonResponse(messageBody('SECRET-MODEL-OUTPUT {', 'max_tokens')));
+    await expect(generate(coach)).rejects.toSatisfy((err: Error) => err instanceof CoachOutputError && !err.message.includes('SECRET-MODEL-OUTPUT'));
+  });
+
+  it.each([[500], [401], [429], [529]])('lets an HTTP %i error through as an API error, with exactly one attempt (no SDK retry)', async (status) => {
+    const { coach, calls } = coachOver(async () =>
+      jsonResponse({ type: 'error', error: { type: 'api_error', message: 'upstream problem' } }, status));
+    const error = await generate(coach).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Anthropic.APIError);
+    expect(error).not.toBeInstanceOf(CoachOutputError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('lets a connection failure through as unavailable, not as an invalid response', async () => {
+    const { coach } = coachOver(async () => {
+      throw new TypeError('fetch failed');
+    });
+    const error = await generate(coach).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Anthropic.APIConnectionError);
+    expect(error).not.toBeInstanceOf(CoachOutputError);
+  });
+
+  it('lets a timeout through as unavailable @spec(plan-generation/distinct-failure-outcomes/coach-timeout)', async () => {
+    const { coach, calls } = coachOver(
+      (_url, init) =>
+        new Promise((_, reject) =>
+          init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))),
+        ),
+      50,
+    );
+    const error = await generate(coach).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(Anthropic.APIConnectionTimeoutError);
+    expect(calls).toHaveLength(1);
   });
 });

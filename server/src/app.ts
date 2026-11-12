@@ -74,10 +74,9 @@ export function createApp(deps?: AppDeps) {
     if (!deps) {
       return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' }); // wired in task 5.4
     }
-    generatePlan(deps, result.value).then(
-      (outcome) => res.status(outcome.status).json(outcome.body),
-      next,
-    );
+    generatePlan(deps, result.value)
+      .then((outcome) => res.status(outcome.status).json(outcome.body))
+      .catch(next); // also catches a failure while sending, so it never becomes an unhandled rejection
   });
 
   // The latest saved plan record, or JSON null. Never calls the coach and never touches the cap.

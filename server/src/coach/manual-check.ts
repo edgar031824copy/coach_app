@@ -63,6 +63,6 @@ try {
 } catch (err) {
   if (err instanceof CoachOutputError) console.log(`FAIL: invalid coach response (${err.message}).`);
   else if (err instanceof Anthropic.APIError) console.log(`FAIL: API error ${err.status ?? ''} ${err.name}: ${err.message}`);
-  else console.log(`FAIL: ${(err as Error)?.name ?? 'Error'}: ${(err as Error)?.message ?? ''}`);
+  else console.log(`FAIL: ${(err as Error)?.name ?? 'Error'}`); // name only: some messages embed the model's output
   process.exit(1);
 }

@@ -146,6 +146,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: the owner has completed every item and confirms it in the PR.
   - Test plan: the owner ticks each item; confirm that a push to `master` triggers no provider deploy by itself.
   - Scenarios: `deploy/deploy-order-behind-green-ci/provider-auto-deploy-is-off`.
+  - From the group 5 review: the checklist must say to set `NODE_ENV=production` on the Render service. The refusal of `COACH_MODE=fake` only applies when `NODE_ENV` is `production`, so without it a stray `COACH_MODE=fake` would be accepted and the live app would answer with the placeholder coach. Also set `COACH_MODE=real` explicitly, and `CLIENT_ORIGIN` to the exact Vercel URL (no trailing slash).
 - [ ] 8.3 First deploy and the manual full-flow check: merge, watch the workflow, run onboarding on the live client URL by hand, and record the result in the PR as `@manual`.
   - Done when: `/health` returns ok on the live server and a plan is generated and shown from the live client URL; the PR records evidence for every `@manual` deploy scenario: the first run's step order, a forced failing migration step and smoke step showing the later steps skipped and the failed status, a red-CI run that does not deploy, and the provider auto-deploy setting.
   - Test plan: the manual run, with a screenshot or note in the PR.

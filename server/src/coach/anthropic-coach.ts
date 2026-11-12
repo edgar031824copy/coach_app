@@ -10,8 +10,9 @@ const MAX_TOKENS = 8000; // 🔶
 const TIMEOUT_MS = 30_000; // 🔶 the endpoint also enforces this deadline itself
 
 // One call counts toward the daily cap, so the SDK never retries on its own: the athlete decides whether to retry.
-export function buildAnthropicClient(apiKey: string): Anthropic {
-  return new Anthropic({ apiKey, maxRetries: 0, timeout: TIMEOUT_MS });
+// `test` is a seam for tests only: a fake network (`fetch`) and a shorter timeout, so the real SDK code runs without a call.
+export function buildAnthropicClient(apiKey: string, test: { fetch?: typeof fetch; timeoutMs?: number } = {}): Anthropic {
+  return new Anthropic({ apiKey, maxRetries: 0, timeout: test.timeoutMs ?? TIMEOUT_MS, ...(test.fetch ? { fetch: test.fetch } : {}) });
 }
 
 // The real coach: structured output (the schema comes from the shared Zod schema), effort set explicitly to medium for
@@ -31,8 +32,15 @@ export function createAnthropicCoach(client: Anthropic, options: { model: string
           output_config: { effort: 'medium', format: zodOutputFormat(CoachResponseSchema) },
         });
       } catch (err) {
-        // A failure to parse the model's JSON is a bad answer, not a coach outage.
-        if (err instanceof SyntaxError || (err as Error)?.name === 'ZodError') {
+        // The SDK parses the answer inside `parse` and wraps ANY failure (cut-off JSON, text that is not JSON, JSON that
+        // does not match the schema) in a plain AnthropicError. That is a bad answer, not a coach outage. API and
+        // connection errors are subclasses of APIError and pass through, so the endpoint reports "unavailable".
+        // The SDK's message embeds the model's output, so it is never copied into our error.
+        if (
+          err instanceof Anthropic.AnthropicError &&
+          !(err instanceof Anthropic.APIError) &&
+          err.message.startsWith('Failed to parse structured output')
+        ) {
           throw new CoachOutputError('the answer could not be parsed');
         }
         throw err;

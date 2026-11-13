@@ -101,10 +101,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Done when: the fake coach's answers pass `validateCoachResponse` for many day combinations, with and without a pasted plan (pasted sessions kept as written, only CrossFit added, the named week read, nothing read from an unreadable paste), and a valid POST in fake mode answers 200 and is saved.
   - Test plan: `fake-coach.test.ts` (validity grid plus targeted cases) and the updated `wire.test.ts`; mutation checks on every rule it must keep.
   - Scenarios: none of its own (the fake coach is test support). 7.1 keeps the end-to-end use of it.
-- [ ] 6.1 Create the `client/` package (React, Vite, TypeScript, Vitest, Testing Library) and the API module with a 120 s abort timeout and a "waking up the coach" state after 3 s.
+- [x] 6.1 Create the `client/` package (React, Vite, TypeScript, Vitest, Testing Library) and the API module with a 120 s abort timeout and a "waking up the coach" state after 3 s.
   - Done when: a component test shows the waking state at 3 s of silence and no timeout error before 120 s (fake timers).
   - Test plan: component test with fake timers and a delayed fake fetch.
   - Scenarios: `deploy/cold-start-experience/*`.
+  - Done in 6.1: `client/` workspace (React 19, Vite 8, Vitest + jsdom, Testing Library), `src/api.ts` (`createApi`: typed `ApiResult`, 120 s abort, response checked with the shared schemas, failures split into `api` / `network` / `timeout`), `src/use-plan-request.ts` (idle, loading, waking after 3 s, done), a placeholder `App`. The waking state is a hook, tested with `renderHook`; it is shown on screen in 6.4. `shared` is imported from source through a Vite alias, so the client builds without building `shared`.
 - [ ] 6.2 Build the onboarding form using the shared schema for instant field feedback and showing server field errors.
   - Done when: an invalid value shows its message before submitting and a server `validation_error` shows per-field messages.
   - Test plan: component tests for both paths.

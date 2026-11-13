@@ -28,12 +28,16 @@ describe('buildDeps', () => {
     expect(empty.text).toBe('null');
     expect(empty.headers['access-control-allow-origin']).toBe('https://app.example.com');
 
-    // No coach is implemented yet (tasks 5.3 and 7.1), so a valid request is "unavailable" - but it still uses the
-    // configured cap: with a limit of 1 the second request is refused.
+    // Fake mode wires the fake coach (task 6.0): a valid request gets a plan, and it uses the configured cap:
+    // with a limit of 1 the second request is refused.
     const first = await request(app).post('/api/plan').send(body);
-    expect(first.status).toBe(502);
-    expect(first.body.error).toBe('coach_unavailable');
+    expect(first.status).toBe(200);
+    expect(first.body.plan.days).toHaveLength(7);
+    expect(first.body.remainingCallsToday).toBe(0);
     const second = await request(app).post('/api/plan').send(body);
     expect(second.status).toBe(429);
+
+    const saved = await request(app).get('/api/plan');
+    expect(saved.body.id).toBe(first.body.id);
   });
 });

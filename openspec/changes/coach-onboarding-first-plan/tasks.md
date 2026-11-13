@@ -97,6 +97,10 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 6. Client
 
+- [x] 6.0 Build the fake coach (`server/src/coach/fake-coach.ts`) and wire it for `COACH_MODE=fake`, so the client (and later the Playwright tests of 7.1) have a coach to talk to without the API. Added during apply: it was part of 7.1, moved earlier because every client task needs it.
+  - Done when: the fake coach's answers pass `validateCoachResponse` for many day combinations, with and without a pasted plan (pasted sessions kept as written, only CrossFit added, the named week read, nothing read from an unreadable paste), and a valid POST in fake mode answers 200 and is saved.
+  - Test plan: `fake-coach.test.ts` (validity grid plus targeted cases) and the updated `wire.test.ts`; mutation checks on every rule it must keep.
+  - Scenarios: none of its own (the fake coach is test support). 7.1 keeps the end-to-end use of it.
 - [ ] 6.1 Create the `client/` package (React, Vite, TypeScript, Vitest, Testing Library) and the API module with a 120 s abort timeout and a "waking up the coach" state after 3 s.
   - Done when: a component test shows the waking state at 3 s of silence and no timeout error before 120 s (fake timers).
   - Test plan: component test with fake timers and a delayed fake fetch.
@@ -121,7 +125,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
 
 ## 7. End-to-end tests and evaluation
 
-- [ ] 7.1 Add Playwright end-to-end tests for the main journey, using the fake coach selected by `COACH_MODE=fake` (the server refuses to start with it when `NODE_ENV=production`, and a test covers that refusal): onboarding with a pasted plan, plan shown, reload, "Plan next week", and a daily-limit message.
+- [ ] 7.1 Add Playwright end-to-end tests for the main journey (the fake coach itself is built in 6.0), using the fake coach selected by `COACH_MODE=fake` (the server refuses to start with it when `NODE_ENV=production`, and a test covers that refusal): onboarding with a pasted plan, plan shown, reload, "Plan next week", and a daily-limit message.
   - Done when: the tests run green in CI against the local stack with a real Postgres container.
   - Test plan: the Playwright tests themselves, written first.
   - Scenarios: `plan-storage/plan-next-week/form-is-pre-filled`, `plan-storage/plan-next-week/submitting-counts-as-a-normal-call`, `cost-cap/daily-cap/cap-reached`.

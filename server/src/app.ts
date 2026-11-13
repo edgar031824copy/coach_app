@@ -2,7 +2,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import type { ApiError } from 'shared';
 import { generatePlan, type GenerateDeps } from './generate-plan.js';
 import { logError } from './log.js';
-import { validateOnboarding } from './validation/onboarding.js';
+import { validateOnboarding } from 'shared';
 
 export type AppDeps = GenerateDeps & { clientOrigin: string };
 

@@ -106,10 +106,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: component test with fake timers and a delayed fake fetch.
   - Scenarios: `deploy/cold-start-experience/*`.
   - Done in 6.1: `client/` workspace (React 19, Vite 8, Vitest + jsdom, Testing Library), `src/api.ts` (`createApi`: typed `ApiResult`, 120 s abort, response checked with the shared schemas, failures split into `api` / `network` / `timeout`), `src/use-plan-request.ts` (idle, loading, waking after 3 s, done), a placeholder `App`. The waking state is a hook, tested with `renderHook`; it is shown on screen in 6.4. `shared` is imported from source through a Vite alias, so the client builds without building `shared`.
-- [ ] 6.2 Build the onboarding form using the shared schema for instant field feedback and showing server field errors.
+- [x] 6.2 Build the onboarding form using the shared schema for instant field feedback and showing server field errors.
   - Done when: an invalid value shows its message before submitting and a server `validation_error` shows per-field messages.
   - Test plan: component tests for both paths.
   - Scenarios: none new (the rules are covered in group 2; this task only presents them).
+  - Done in 6.2: `validateOnboarding` and `LIMITS` moved from `server/src/validation/` to `shared/src/onboarding.ts` (with their tests), so the form runs the very same rules as the server; `OnboardingForm` shows a field's message once it is touched or after a submit attempt, blocks an invalid submit, shows server `fields` next to their inputs (cleared when that field is edited, and any field with no place on the form is still shown), and `App` wires it to the request hook. Layout-only `styles.css`; visual design is not part of E1's scope. Checked in a browser against the fake coach: an empty submit shows every message, a valid submit saved a plan.
 - [ ] 6.3 Build the plan view: seven days in order, rest day, "from your plan" and "coach suggestion" labels, combined-load note, safety note, week number.
   - Done when: each listed scenario passes in a component test with fixture plans.
   - Test plan: component tests with fixtures including an empty day and a pasted-plan plan.

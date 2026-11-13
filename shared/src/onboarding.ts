@@ -1,4 +1,4 @@
-import { DaySchema, LevelSchema, OnboardingSchema, type Onboarding } from 'shared';
+import { DaySchema, LevelSchema, OnboardingSchema, type Onboarding } from './index.js';
 
 export type ValidationResult = { ok: true; value: Onboarding } | { ok: false; fields: Record<string, string> };
 

@@ -111,10 +111,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: component tests for both paths.
   - Scenarios: none new (the rules are covered in group 2; this task only presents them).
   - Done in 6.2: `validateOnboarding` and `LIMITS` moved from `server/src/validation/` to `shared/src/onboarding.ts` (with their tests), so the form runs the very same rules as the server; `OnboardingForm` shows a field's message once it is touched or after a submit attempt, blocks an invalid submit, shows server `fields` next to their inputs (cleared when that field is edited, and any field with no place on the form is still shown), and `App` wires it to the request hook. Layout-only `styles.css`; visual design is not part of E1's scope. Checked in a browser against the fake coach: an empty submit shows every message, a valid submit saved a plan.
-- [ ] 6.3 Build the plan view: seven days in order, rest day, "from your plan" and "coach suggestion" labels, combined-load note, safety note, week number.
+- [x] 6.3 Build the plan view: seven days in order, rest day, "from your plan" and "coach suggestion" labels, combined-load note, safety note, week number.
   - Done when: each listed scenario passes in a component test with fixture plans.
   - Test plan: component tests with fixtures including an empty day and a pasted-plan plan.
   - Scenarios: `plan-storage/day-by-day-view/*`, `running-plan-import/labels-and-recommendations/*`, `safety/safety-note-when-pain-is-reported/pain-reported-with-a-note` (display).
+  - Done in 6.3: `client/src/PlanView.tsx` (takes a `PlanRecord`; a `PlanResponse` also fits). It sorts the days itself, because the server checks that all seven are present but not their order. Plan text is rendered as text, never markup (tested). `App` shows the plan below the form after a successful request; reload and "Plan next week" are 6.4. Structure and labels only, no visual design.
 - [ ] 6.4 Implement reload and "Plan next week", and the client messages for each error (retry for `coach_unavailable` and `invalid_coach_response`, a clear message for `plan_unreadable`, "daily limit reached" with no retry, "no retries remain today" when `remainingCallsToday` is 0 after a failed call).
   - Done when: reload shows the saved plan with no new call; "Plan next week" pre-fills week plus 1 (week 53 shows its field error) and changes nothing until submitted.
   - Test plan: component tests with a fake API for each error and for pre-fill.

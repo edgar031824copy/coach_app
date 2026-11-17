@@ -1,4 +1,4 @@
-import { DaySchema, LevelSchema, OnboardingSchema, type Onboarding } from 'shared';
+import { DaySchema, LevelSchema, OnboardingSchema, type Onboarding } from './index.js';
 
 export type ValidationResult = { ok: true; value: Onboarding } | { ok: false; fields: Record<string, string> };
 
@@ -40,7 +40,7 @@ export function validateOnboarding(body: unknown, now: () => Date = () => new Da
 
   for (const name of ['runningLevel', 'crossfitLevel'] as const) {
     if (!LevelSchema.safeParse(input[name]).success) {
-      fields[name] = `${name} must be beginner, intermediate, or advanced.`;
+      fields[name] = name === 'runningLevel' ? 'Choose your running level.' : 'Choose your CrossFit level.';
     }
   }
 

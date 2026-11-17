@@ -100,6 +100,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci && npm run build -w server
+      - name: Build the client and scan the bundle for secrets
+        # Fails on a secret variable name or the sk-ant- key prefix anywhere in the build output. It prints the file and
+        # the rule, never the matched text. A server secret reaching the browser bundle is the leak this guards against.
+        run: |
+          npm run build -w client
+          node scripts/scan-bundle client/dist
       - name: The built server refuses to start without configuration
         run: |
           if PORT=3112 node server/dist/index.js; then

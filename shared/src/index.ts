@@ -83,3 +83,6 @@ export type CoachResponse = z.infer<typeof CoachResponseSchema>;
 export type PlanRecord = z.infer<typeof PlanRecordSchema>;
 export type PlanResponse = z.infer<typeof PlanResponseSchema>;
 export type ApiError = z.infer<typeof ApiErrorSchema>;
+
+// The onboarding rules live here, not in the server, so the form and the API check the same thing (task 6.2).
+export * from './onboarding.js';

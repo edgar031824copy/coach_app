@@ -4,6 +4,18 @@ History of `prd-coach-app.md`, newest first. Each version lists what was added, 
 
 Dates come from the git history and the working sessions; for exact diffs, use `git log -- prd-coach-app.md`.
 
+## 1.6 (2026-11-16)
+
+**Added**
+- Epic **E1b, UI foundation**: apply a designed interface to the E1 screens (page structure and navigation, a small design system, mobile layout, wording of labels and errors, accessibility baseline) with no change in behavior. Depends on E1 and spike X4; placed after E1 and before E2, so later epics build their screens on it.
+- Spike **X4, UI direction**: compare current fitness and coaching apps and the available design tools before E1b is designed; ends in a decision note the owner approves.
+- Should item **S6**, a designed, usable interface, so the new epic traces to a scope item.
+
+**Changed**
+- The critical path now reads E1, then spikes X1, X2 and X4 in parallel, then E1b, then E2.
+
+**Why:** E1 delivers working but deliberately unstyled screens (its specs say nothing about visual design), and every later epic adds more UI. Designing once, early, avoids restyling everything at E5. E1's own scope and exit criteria are unchanged.
+
 ## 1.5 (2026-11-05)
 
 **Added**

@@ -12,7 +12,10 @@ const NO_RETRIES = 'No retries remain today.';
 // sense. A retry costs a call (the daily cap counts failed calls too), so it is hidden when none remain.
 export function describeFailure(failure: ApiFailure): FailureNotice {
   if (failure.kind === 'network') return { message: 'Could not reach the server. Check your connection and try again.', canRetry: true, limitNote: null };
-  if (failure.kind === 'timeout') return { message: 'The coach took too long to answer. Nothing was saved. Try again.', canRetry: true, limitNote: null };
+  // The client gave up waiting, but the server may still have finished: it is not certain that nothing was saved.
+  if (failure.kind === 'timeout') {
+    return { message: 'The coach took too long to answer. Your plan may still have been saved: reload the page to check, or try again.', canRetry: true, limitNote: null };
+  }
 
   const { error, message, remainingCallsToday } = failure.error;
   const lastCallUsed = remainingCallsToday === 0;

@@ -64,4 +64,11 @@ describe('describeFailure', () => {
     expect(describeFailure({ kind: 'timeout' }).canRetry).toBe(true);
     expect(describeFailure({ kind: 'timeout' }).message).toMatch(/too long/i);
   });
+
+  it('does not claim nothing was saved after a timeout: the server may still have finished and saved the plan', () => {
+    const { message } = describeFailure({ kind: 'timeout' });
+    expect(message).not.toMatch(/nothing was saved/i);
+    expect(message).toMatch(/may still have been saved/i);
+    expect(message).toMatch(/reload/i); // and says how to find out
+  });
 });

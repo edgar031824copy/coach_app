@@ -149,10 +149,17 @@ describe('App: errors keep the saved plan, and each has its own message', () => 
     expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('shows a network failure and a timeout, each with a retry', async () => {
-    const a = await fail(async () => ({ ok: false as const, failure: { kind: 'network' as const } }));
-    expect(a.alert.textContent).toMatch(/connection/i);
-    expect(within(a.alert).getByRole('button', { name: 'Try again' })).toBeTruthy();
+  it('shows a network failure with a retry', async () => {
+    const { alert } = await fail(async () => ({ ok: false as const, failure: { kind: 'network' as const } }));
+    expect(alert.textContent).toMatch(/connection/i);
+    expect(within(alert).getByRole('button', { name: 'Try again' })).toBeTruthy();
+  });
+
+  it('shows a timeout with a retry, and says the plan may still have been saved', async () => {
+    const { alert } = await fail(async () => ({ ok: false as const, failure: { kind: 'timeout' as const } }));
+    expect(alert.textContent).toMatch(/too long/i);
+    expect(alert.textContent).toMatch(/may still have been saved/i);
+    expect(within(alert).getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 });
 

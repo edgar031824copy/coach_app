@@ -127,6 +127,7 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Test plan: run the scan once on a bundle with a planted string and once on the clean build.
   - Scenarios: `deploy/no-secrets-and-restricted-origin/no-secret-in-the-repo-or-bundle`.
   - Done in 6.5: `scripts/scan-bundle <folder>` (exit 0 clean, 1 a secret was found, 2 nothing was scanned, so an empty or missing build can never pass) with tests in `client/src/bundle-scan.test.ts`, and a step in the CI `clean-build` job that builds the client and runs it. It prints the file and the rule, never the matched text. Run by hand on the real build (3 files, clean) and on a copy with a planted `sk-ant-` string (caught, key not printed). The repo half of the scenario is the existing gitleaks job.
+  - From the group 6 review (no HIGH): the timeout message no longer claims "nothing was saved" (the server may still finish after the client gives up at 120 s; it now says the plan may have been saved and to reload), and `scripts/scan-bundle` also fails on `postgres://` and `postgresql://` (a `DATABASE_URL` value inlined through a `VITE_*` variable would not contain the name). Deferred: re-reading the saved plan automatically after a timeout; a `schemas.ts` split to remove the harmless import cycle between `shared/src/onboarding.ts` and `index.ts` (it stays safe while `onboarding.ts` uses the schemas only inside functions); a stale error alert stays visible after "Plan next week" until the next submit (cosmetic, left to the UI epic).
 
 ## 7. End-to-end tests and evaluation
 

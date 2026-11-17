@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Bundle secret scan (deploy spec: "No secret in the repo or bundle"; the repo half is the gitleaks job in CI).
-// Fails when any file of a build output contains a secret variable name or the Anthropic key prefix. It prints the
+// Fails when any file of a build output contains a secret variable name, the Anthropic key prefix, or a Postgres connection string. It prints the
 // file and the rule, never the text around a match, so a real key cannot leak into the CI log.
 // Usage:  scripts/scan-bundle <build-folder>        exit 0 clean, 1 a secret was found, 2 nothing was scanned
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -10,6 +10,10 @@ const RULES = [
   { needle: 'ANTHROPIC_API_KEY', label: 'the secret name "ANTHROPIC_API_KEY"' },
   { needle: 'DATABASE_URL', label: 'the secret name "DATABASE_URL"' },
   { needle: 'sk-ant-', label: 'the Anthropic key prefix "sk-ant-"' },
+  // A DATABASE_URL value inlined through a VITE_* variable would not contain the name, so look for the value's shape too.
+  // A browser bundle has no use for either scheme.
+  { needle: 'postgres://', label: 'a database connection string ("postgres://")' },
+  { needle: 'postgresql://', label: 'a database connection string ("postgresql://")' },
 ];
 
 function* walk(dir) {

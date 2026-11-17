@@ -50,6 +50,16 @@ describe('scripts/scan-bundle', () => {
     }
   });
 
+  it('fails on a database connection string, which would leak a DATABASE_URL value without its name, and never prints it', () => {
+    for (const value of ['postgres://appuser:hunter2pw@db.example.com:5432/coach', 'postgresql://appuser:hunter2pw@db.example.com/coach']) {
+      const r = scan(bundle({ ...CLEAN, 'assets/index.js': `const u="${value}";` }));
+      expect(r.status, value).toBe(1);
+      expect(r.err, value).toContain('FOUND  assets/index.js: found a database connection string');
+      expect(r.err, value).not.toContain('hunter2pw');
+      expect(r.err, value).not.toContain('db.example.com');
+    }
+  });
+
   it('looks in every kind of file and every folder, not only .js at the top', () => {
     for (const path of ['assets/deep/er/chunk.js.map', 'assets/style.css', 'index.html', 'a/b/c/d.txt']) {
       const r = scan(bundle({ ...CLEAN, [path]: 'DATABASE_URL' }));

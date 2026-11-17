@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OnboardingForm } from './OnboardingForm.js';
+import { onboarding as base } from './test-helpers.js';
 
 const setup = (props: Partial<Parameters<typeof OnboardingForm>[0]> = {}) => {
   const onSubmit = vi.fn();
@@ -78,7 +79,8 @@ describe('OnboardingForm: submitting', () => {
     await user.click(submitButton());
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('Goal is required.')).toBeTruthy();
-    expect(screen.getAllByText(/must be beginner, intermediate, or advanced/).length).toBe(2);
+    expect(screen.getByText('Choose your running level.')).toBeTruthy();
+    expect(screen.getByText('Choose your CrossFit level.')).toBeTruthy();
     expect(screen.getAllByText('Pick at least one training day, or paste a running plan.').length).toBe(2);
   });
 
@@ -166,5 +168,55 @@ describe('OnboardingForm: server field errors', () => {
   it('shows a message for a field the form has no place for, instead of hiding it', () => {
     setup({ serverFields: { body: 'The request body must be a JSON object.' } });
     expect(screen.getByText('The request body must be a JSON object.')).toBeTruthy();
+  });
+});
+
+describe('OnboardingForm: pre-filled from a saved onboarding', () => {
+  const saved = {
+    ...base,
+    goal: 'Finish a 10k',
+    injuries: 'sore knee',
+    runningDays: ['mon', 'fri'] as const,
+    crossfitDays: ['tue'] as const,
+    existingRunningPlan: 'Week 5: Mon 5 km easy',
+    pastedPlanWeek: 5,
+    weeklyTraining: { runningSessions: 3, crossfitSessions: 2, runningKm: 25.5 },
+    targetEvent: { name: 'City Half', date: '2099-12-06' },
+  };
+
+  it('shows every saved answer, and submitting it unchanged sends the same onboarding', async () => {
+    const { user, onSubmit } = setup({ initial: { ...saved, runningDays: [...saved.runningDays], crossfitDays: [...saved.crossfitDays] } });
+    expect((screen.getByLabelText(/goal/i) as HTMLTextAreaElement).value).toBe('Finish a 10k');
+    expect((screen.getByLabelText(/running level/i) as HTMLSelectElement).value).toBe('intermediate');
+    expect((day('Running days', 'Fri') as HTMLInputElement).checked).toBe(true);
+    expect((day('Running days', 'Tue') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText(/week of your plan/i) as HTMLInputElement).value).toBe('5');
+    expect((screen.getByLabelText(/km per week/i) as HTMLInputElement).value).toBe('25.5');
+    expect((screen.getByLabelText(/event date/i) as HTMLInputElement).value).toBe('2099-12-06');
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledWith({ ...saved, runningDays: ['mon', 'fri'], crossfitDays: ['tue'] });
+  });
+
+  it('keeps empty optional answers null when pre-filled', async () => {
+    const { user, onSubmit } = setup({ initial: { ...base, runningDays: ['mon'], goal: 'Run' } });
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ existingRunningPlan: null, pastedPlanWeek: null, weeklyTraining: null, targetEvent: null }));
+  });
+
+  it('shows a field error at once for a pre-filled value that is not allowed, such as week 53, and lets the athlete edit it @spec(plan-storage/plan-next-week/week-past-the-maximum)', async () => {
+    const { user, onSubmit } = setup({ initial: { ...saved, pastedPlanWeek: 53, runningDays: ['mon'], crossfitDays: [] } });
+    expect(screen.getByText('The plan week must be a whole number from 1 to 52.')).toBeTruthy();
+    await user.click(submitButton());
+    expect(onSubmit).not.toHaveBeenCalled();
+    await user.clear(screen.getByLabelText(/week of your plan/i));
+    await user.type(screen.getByLabelText(/week of your plan/i), '52');
+    expect(screen.queryByText(/plan week must be/)).toBeNull();
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts the cursor in the first field so the athlete can start editing', () => {
+    setup({ initial: { ...base, runningDays: ['mon'] } });
+    expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
   });
 });

@@ -29,6 +29,19 @@ const KEY_OF: Record<keyof Values, Key> = {
 
 const blank = (s: string) => s.trim() === '';
 
+// A saved onboarding back into what the boxes hold.
+function toValues(o: Onboarding): Values {
+  return {
+    goal: o.goal, runningLevel: o.runningLevel, crossfitLevel: o.crossfitLevel, injuries: o.injuries,
+    runningDays: o.runningDays, crossfitDays: o.crossfitDays,
+    existingRunningPlan: o.existingRunningPlan ?? '', pastedPlanWeek: o.pastedPlanWeek === null ? '' : String(o.pastedPlanWeek),
+    runningSessions: o.weeklyTraining ? String(o.weeklyTraining.runningSessions) : '',
+    crossfitSessions: o.weeklyTraining ? String(o.weeklyTraining.crossfitSessions) : '',
+    runningKm: o.weeklyTraining?.runningKm == null ? '' : String(o.weeklyTraining.runningKm),
+    eventName: o.targetEvent?.name ?? '', eventDate: o.targetEvent?.date ?? '',
+  };
+}
+
 // The request body for the shared validator; an optional part with nothing typed is null.
 function toInput(v: Values): unknown {
   const anyWeekly = !(blank(v.runningSessions) && blank(v.crossfitSessions) && blank(v.runningKm));
@@ -55,6 +68,7 @@ function toInput(v: Values): unknown {
 
 export interface OnboardingFormProps {
   onSubmit: (onboarding: Onboarding) => void;
+  initial?: Onboarding; // pre-fill ("Plan next week"); every pre-filled value is checked at once, so a bad one shows its error
   busy?: boolean; // a request is running
   serverFields?: Record<string, string>; // per-field messages from a server `validation_error`
 }
@@ -62,12 +76,19 @@ export interface OnboardingFormProps {
 // A stable default: a new `{}` on every render would restart the effect below on every render, forever.
 const NO_FIELDS: Record<string, string> = {};
 
-export function OnboardingForm({ onSubmit, busy = false, serverFields = NO_FIELDS }: OnboardingFormProps) {
-  const [values, setValues] = useState<Values>(EMPTY);
-  const [touched, setTouched] = useState<Set<Key>>(new Set());
+export function OnboardingForm({ onSubmit, initial, busy = false, serverFields = NO_FIELDS }: OnboardingFormProps) {
+  const [values, setValues] = useState<Values>(() => (initial ? toValues(initial) : EMPTY));
+  const [touched, setTouched] = useState<Set<Key>>(() => new Set(initial ? Object.values(KEY_OF) : []));
   const [submitted, setSubmitted] = useState(false);
   const [edited, setEdited] = useState<Set<string>>(new Set()); // server messages the athlete has since edited away
   useEffect(() => setEdited(new Set()), [serverFields]);
+  // A pre-filled form is for editing: bring it into view with the cursor in the first field.
+  useEffect(() => {
+    if (!initial) return;
+    const first = document.getElementById('f-goal');
+    first?.focus();
+    first?.scrollIntoView?.({ block: 'center' });
+  }, [initial]);
 
   const result = validateOnboarding(toInput(values));
   const own = result.ok ? {} : result.fields;

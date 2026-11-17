@@ -18,13 +18,14 @@ export function usePlanRequest(api: Api) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const submit = useCallback(
-    async (onboarding: Onboarding) => {
+    async (onboarding: Onboarding): Promise<ApiResult<PlanResponse>> => {
       clearTimeout(timer.current);
       setState({ phase: 'loading' });
       timer.current = setTimeout(() => setState((s) => (s.phase === 'loading' ? { phase: 'waking' } : s)), WAKING_AFTER_MS);
       const result = await api.postPlan(onboarding);
       clearTimeout(timer.current);
       setState({ phase: 'done', result });
+      return result;
     },
     [api],
   );

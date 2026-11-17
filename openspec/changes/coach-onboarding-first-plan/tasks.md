@@ -122,10 +122,11 @@ Prerequisite outside this change: the harness pieces listed as not built in `doc
   - Scenarios: `plan-storage/plan-next-week/*`, `plan-storage/reload-without-a-coach-call/reload-shows-the-same-plan`, `cost-cap/daily-cap/cap-reached` (client message), `cost-cap/last-allowed-call-fails/last-call-fails`.
   - Done in 6.4: `App` reads the saved plan with `GET /api/plan` on start and keeps the shown plan when a request fails; `nextWeekSeed` (week plus 1, null stays null, no clamping so week 53 shows the field error); `OnboardingForm` takes `initial` and checks every pre-filled value at once; `describeFailure` gives each failure its message and decides whether "Try again" is shown (hidden when `remainingCallsToday` is 0, and then "No retries remain today."; a plan_unreadable message never says "submit again" when no calls remain). Also: the two level errors now read "Choose your running level." and "Choose your CrossFit level." (shared/onboarding.ts; the wording is not part of any scenario). The "building your plan" and "waking up the coach" messages are on screen. Checked in a browser against the fake coach with a daily cap of 3: reload made no call, "Plan next week" pre-filled week 2 with no call, week 3 (not in the paste) gave the unreadable message with no retries left, and the 4th attempt gave the daily-limit message.
 
-- [ ] 6.5 Add a bundle secret scan to CI: build the client and fail if the output contains a secret variable name (`ANTHROPIC_API_KEY`, `DATABASE_URL`) or the `sk-ant-` key prefix.
+- [x] 6.5 Add a bundle secret scan to CI: build the client and fail if the output contains a secret variable name (`ANTHROPIC_API_KEY`, `DATABASE_URL`) or the `sk-ant-` key prefix.
   - Done when: the scan passes on the real build and fails on a build with a planted fake key.
   - Test plan: run the scan once on a bundle with a planted string and once on the clean build.
   - Scenarios: `deploy/no-secrets-and-restricted-origin/no-secret-in-the-repo-or-bundle`.
+  - Done in 6.5: `scripts/scan-bundle <folder>` (exit 0 clean, 1 a secret was found, 2 nothing was scanned, so an empty or missing build can never pass) with tests in `client/src/bundle-scan.test.ts`, and a step in the CI `clean-build` job that builds the client and runs it. It prints the file and the rule, never the matched text. Run by hand on the real build (3 files, clean) and on a copy with a planted `sk-ant-` string (caught, key not printed). The repo half of the scenario is the existing gitleaks job.
 
 ## 7. End-to-end tests and evaluation
 

@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+// Bundle secret scan (deploy spec: "No secret in the repo or bundle"; the repo half is the gitleaks job in CI).
+// Fails when any file of a build output contains a secret variable name or the Anthropic key prefix. It prints the
+// file and the rule, never the text around a match, so a real key cannot leak into the CI log.
+// Usage:  scripts/scan-bundle <build-folder>        exit 0 clean, 1 a secret was found, 2 nothing was scanned
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+
+const RULES = [
+  { needle: 'ANTHROPIC_API_KEY', label: 'the secret name "ANTHROPIC_API_KEY"' },
+  { needle: 'DATABASE_URL', label: 'the secret name "DATABASE_URL"' },
+  { needle: 'sk-ant-', label: 'the Anthropic key prefix "sk-ant-"' },
+];
+
+function* walk(dir) {
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) yield* walk(path);
+    else yield path;
+  }
+}
+
+const root = process.argv[2];
+if (!root || !existsSync(root) || !statSync(root).isDirectory()) {
+  console.error(`bundle scan: "${root ?? ''}" is not a folder. Build the client first and pass its output folder.`);
+  process.exit(2);
+}
+
+let files = 0;
+const findings = [];
+for (const path of walk(root)) {
+  files++;
+  const text = readFileSync(path).toString('latin1'); // any file, even a binary one, without decoding errors
+  const shown = relative(root, path).split(sep).join('/');
+  for (const { needle, label } of RULES) if (text.includes(needle)) findings.push(`${shown}: found ${label}`);
+}
+
+if (files === 0) {
+  console.error(`bundle scan: "${root}" has no files, so nothing was checked. An empty build is an error, not a clean one.`);
+  process.exit(2);
+}
+if (findings.length > 0) {
+  for (const f of findings) console.error(`FOUND  ${f}`);
+  console.error(`bundle scan failed: ${findings.length} finding(s) in ${files} files (matched text is never printed).`);
+  process.exit(1);
+}
+console.log(`bundle scan: no secrets found in ${files} files.`);

@@ -6,7 +6,8 @@
     "shared",
     "server",
     "client",
-    "e2e"
+    "e2e",
+    "evals"
   ],
   "engines": {
     "node": ">=22"

@@ -8,7 +8,10 @@
     "manual-check": "npm run build && node --env-file-if-exists=../.env dist/coach/manual-check.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "plan-check": "npm run build && node --env-file-if-exists=../.env dist/coach/plan-check.js"
+    "plan-check": "npm run build && node --env-file-if-exists=../.env dist/coach/plan-check.js",
+    "migrate": "npm run build && node dist/db/migrate-cli.js",
+    "migrate:dev": "npm run build && DATABASE_URL=${DEV_DATABASE_URL:-postgres://localhost/coach_app_dev} node dist/db/migrate-cli.js",
+    "dev": "npm run build -w shared --prefix .. && DATABASE_URL=${DEV_DATABASE_URL:-postgres://localhost/coach_app_dev} CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost:5173} COACH_MODE=${COACH_MODE:-fake} tsx watch --env-file-if-exists=../.env src/index.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -16,6 +19,7 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.1.0"
   },

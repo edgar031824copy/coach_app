@@ -34,18 +34,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+      # Re-running an old CI run would otherwise deploy that old commit over a newer one (a silent rollback).
+      - name: Deploy only the newest commit of master
+        id: guard
+        run: |
+          tip=$(git ls-remote origin refs/heads/master | cut -f1)
+          if [ "$tip" = "$SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "This commit is not the newest on master, so nothing is deployed."
+          fi
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.current == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: steps.guard.outputs.current == 'true'
 
       - name: 1. Migrate the database
+        if: steps.guard.outputs.current == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run migrate -w server
 
       - name: 2. Deploy the server (Render)
+        if: steps.guard.outputs.current == 'true'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
@@ -53,6 +68,7 @@ jobs:
         run: node scripts/render-deploy
 
       - name: 3a. Build the client and scan the bundle
+        if: steps.guard.outputs.current == 'true'
         env:
           VITE_API_URL: ${{ secrets.SERVER_URL }}
         run: |
@@ -61,6 +77,7 @@ jobs:
           node scripts/package-vercel client/dist .vercel/output
 
       - name: 3b. Deploy the client (Vercel)
+        if: steps.guard.outputs.current == 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -75,13 +92,14 @@ jobs:
           fi
 
       - name: 4. Smoke test the live stack
+        if: steps.guard.outputs.current == 'true'
         env:
           SERVER_URL: ${{ secrets.SERVER_URL }}
           CLIENT_URL: ${{ secrets.CLIENT_URL }}
         run: node scripts/smoke-test
 
       - name: Report the result on the commit
-        if: always()
+        if: always() && steps.guard.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           STATE: ${{ job.status == 'success' && 'success' || 'failure' }}

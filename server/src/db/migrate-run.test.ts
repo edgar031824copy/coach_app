@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runMigrateCli, runMigrations } from './migrate-run.js';
+import pg from 'pg';
 import { realClient } from '../../test/real-db.js';
 
 // Real Postgres, in a throwaway schema: the connection string for the runner points at that schema, so the runner
@@ -74,6 +75,35 @@ describe('runMigrations', () => {
     await expect(runMigrations({ connectionString: url, dir })).rejects.toThrow();
     writeFileSync(join(dir, '001_bad.sql'), 'create table fixed (id int);');
     expect(await runMigrations({ connectionString: url, dir })).toEqual(['001_bad.sql']); // would hang forever on a leaked lock
+  });
+
+  it('gives up with an error instead of waiting forever when another run keeps the lock, and does not leave its connection open', async () => {
+    const url = await setup();
+    const dir = migrationsDir({ '001_a.sql': 'create table a (id int);' });
+    const holder = new pg.Client({ connectionString: url });
+    await holder.connect();
+    await holder.query('select pg_advisory_lock($1)', [7_165_421_903]);
+    try {
+      const started = Date.now();
+      await expect(runMigrations({ connectionString: url, dir, lockTimeoutMs: 300 })).rejects.toThrow();
+      expect(Date.now() - started).toBeLessThan(5000);
+      expect(await tables()).toEqual([]); // nothing was applied
+    } finally {
+      await holder.end();
+    }
+    expect(await runMigrations({ connectionString: url, dir, lockTimeoutMs: 300 })).toEqual(['001_a.sql']); // free again
+  });
+
+  it('waits for the lock timeout only while taking the migration lock: a migration that waits on a table lock is not cut short', async () => {
+    const url = await setup();
+    await db!.client.query('create table pre (id int)');
+    const dir = migrationsDir({ '001_alter.sql': 'alter table pre add column x int;' });
+    const holder = new pg.Client({ connectionString: url });
+    await holder.connect();
+    await holder.query('begin');
+    await holder.query('lock table pre in access exclusive mode');
+    setTimeout(() => void holder.query('commit').then(() => holder.end()), 700); // longer than the 200 ms lock timeout
+    expect(await runMigrations({ connectionString: url, dir, lockTimeoutMs: 200 })).toEqual(['001_alter.sql']);
   });
 });
 

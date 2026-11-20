@@ -82,7 +82,7 @@ describe('scripts/render-deploy', () => {
     expect(JSON.parse(api.seen[0]!.body)).toEqual({});
   });
 
-  it.each(['build_failed', 'update_failed', 'canceled', 'pre_deploy_failed'])('exits 1 and names the status when the deploy ends as %s', async (status) => {
+  it.each(['build_failed', 'update_failed', 'canceled', 'pre_deploy_failed', 'deactivated'])('exits 1 and names the status when the deploy ends as %s', async (status) => {
     const api = await fakeRender(statuses(['build_in_progress', status]));
     const r = await run(base(api.base));
     expect(r.code).toBe(1);
@@ -107,6 +107,23 @@ describe('scripts/render-deploy', () => {
     const r = await run(base(api.base, { COMMIT_SHA: 'abc123def' }));
     expect(r.code).toBe(0);
     expect(api.seen.some((s) => s.url === `/v1/services/${SERVICE}/deploys/dep-9`)).toBe(true);
+  });
+
+  it('uses the deploy of this commit from the list, not just the newest one, and fails when none matches', async () => {
+    const list = (items: unknown[]): Handler => (s, _n, res) => {
+      if (s.method === 'POST') return send(res, 202);
+      if (s.url.startsWith(`/v1/services/${SERVICE}/deploys?`)) return send(res, 200, items);
+      send(res, 200, { status: 'live' });
+    };
+    const mixed = [{ deploy: { id: 'dep-other', commit: { id: 'zzz999' } } }, { deploy: { id: 'dep-mine', commit: { id: 'abc123def' } } }];
+    const api = await fakeRender(list(mixed));
+    expect((await run(base(api.base, { COMMIT_SHA: 'abc123def' }))).code).toBe(0);
+    expect(api.seen.some((s) => s.url.endsWith('/deploys/dep-mine'))).toBe(true);
+    expect(api.seen.some((s) => s.url.endsWith('/deploys/dep-other'))).toBe(false);
+    const none = await fakeRender(list([mixed[0]]));
+    const r = await run(base(none.base, { COMMIT_SHA: 'abc123def' }));
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/could not be found/);
   });
 
   it('keeps waiting through a failed or garbled poll answer instead of failing the deploy', async () => {

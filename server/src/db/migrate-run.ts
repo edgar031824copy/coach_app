@@ -8,11 +8,18 @@ const MIGRATION_LOCK_KEY = 7_165_421_903;
 // Connects with its own single connection (migrate() needs one, because each file runs in a transaction on it), waits for
 // the lock, applies the pending migrations, and always closes the connection. The lock belongs to that session, so closing
 // the connection releases it, even after a failure: a session pooler keeps the same session for the whole run.
-export async function runMigrations(opts: { connectionString: string; dir: string }): Promise<string[]> {
+export async function runMigrations(opts: { connectionString: string; dir: string; lockTimeoutMs?: number }): Promise<string[]> {
   const client = new pg.Client({ connectionString: opts.connectionString });
+  // A pooler can drop an idle connection; without a listener that event would crash the process with an unlabeled error.
+  // The failure still surfaces through the query that was waiting, and only its label is printed (see `label`).
+  client.on('error', () => undefined);
   await client.connect();
   try {
+    // Give up instead of waiting forever for a run that never finishes (the setting applies to waiting for the lock only:
+    // it is switched off again before any migration runs, so a slow migration is never cut short).
+    await client.query(`set lock_timeout = ${Math.floor(opts.lockTimeoutMs ?? 120_000)}`);
     await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+    await client.query('set lock_timeout = 0');
     return await migrate(client, opts.dir);
   } finally {
     await client.end().catch(() => undefined);

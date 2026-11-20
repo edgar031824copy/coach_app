@@ -20,7 +20,7 @@ const API = (process.env.RENDER_API_BASE ?? 'https://api.render.com').replace(/\
 const POLL_MS = Number(process.env.RENDER_POLL_MS ?? 10_000);
 const TIMEOUT_MS = Number(process.env.RENDER_DEPLOY_TIMEOUT_MS ?? 900_000);
 const commit = process.env.COMMIT_SHA;
-const FAILED = new Set(['build_failed', 'update_failed', 'canceled', 'pre_deploy_failed']);
+const FAILED = new Set(['build_failed', 'update_failed', 'canceled', 'pre_deploy_failed', 'deactivated']);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function call(path, init = {}) {
@@ -48,11 +48,13 @@ try {
   const started = await call(servicePath, { method: 'POST', body: JSON.stringify(commit ? { commitId: commit } : {}) });
   if (started.status < 200 || started.status >= 300) stop(1, `render-deploy: Render refused to start the deploy (status ${started.status}).`);
   deployId = started.json?.id;
-  // Render may answer 202 with no body: then the new deploy is the newest one in the list.
+  // Render may answer 202 with no body: then find the deploy of THIS commit in the list (the newest one could be another
+  // deploy, for example one started by hand). Without a commit, the newest one is the one just started.
   if (!deployId) {
-    const list = await call(`${servicePath}?limit=1`);
-    const first = Array.isArray(list.json) ? list.json[0] : undefined;
-    deployId = first?.deploy?.id ?? first?.id;
+    const list = await call(`${servicePath}?limit=20`);
+    const items = Array.isArray(list.json) ? list.json.map((i) => i?.deploy ?? i) : [];
+    const mine = commit ? items.find((d) => d?.commit?.id === commit) : items[0];
+    deployId = mine?.id;
   }
 } catch (err) {
   stop(1, `render-deploy: could not start the deploy ${why(err)}.`);

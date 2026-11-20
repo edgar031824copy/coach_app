@@ -4,7 +4,8 @@
 //   npm run evals -w evals -- --repeats 3        more repeats (every one is another paid call per case)
 //   npm run evals -w evals -- --only pain-mixed  one case
 //   npm run evals -w evals -- --coach fake       the rule-based fake coach: free, only to check the runner itself
-//   npm run evals -w evals -- --write-baseline   after a run you accept, record its pass rates as evals/baseline.json
+//   npm run evals -w evals -- --repeats 3 --write-baseline   after a full run you accept, record its pass rates as evals/baseline.json
+//                                                (refused with --only, below 3 repeats, with the fake coach, or when the run failed)
 //
 // The real coach needs ANTHROPIC_API_KEY, from the environment or the repo-root `.env` (git-ignored). The scenarios use
 // invented data. The report prints the safety notes the model wrote, so you can judge their wording: the checks are
@@ -61,7 +62,7 @@ const resultsDir = new URL('../../../results/', import.meta.url);
 const readBaseline = (): Baseline | null => {
   try {
     const b = JSON.parse(readFileSync(baselineUrl, 'utf8')) as Baseline;
-    return b.cases && Object.keys(b.cases).length > 0 ? b : null; // the committed placeholder has no cases yet
+    return b.cases && Object.keys(b.cases).length > 0 ? b : null; // a file with no cases (the old placeholder) counts as no baseline
   } catch {
     return null;
   }

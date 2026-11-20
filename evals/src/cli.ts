@@ -56,6 +56,9 @@ export function parseCliArgs(argv: string[], caseIds: string[]): CliResult {
 
   const writeBaseline = values['write-baseline'] ?? false;
   if (writeBaseline && coach === 'fake') return { ok: false, error: 'a baseline is the real model\'s pass rates: --write-baseline cannot be used with --coach fake.' };
+  // A baseline replaces the whole file, so it must come from a full run, and from enough samples to mean something.
+  if (writeBaseline && only) return { ok: false, error: '--write-baseline needs a run of every case: with --only it would replace the baseline with just the chosen cases.' };
+  if (writeBaseline && Number(repeatsText) < 3) return { ok: false, error: '--write-baseline needs --repeats 3 or more: one or two samples per case say little about flakiness.' };
 
   return { ok: true, options: { coach, repeats: Number(repeatsText), only, model: values.model ?? null, writeBaseline, priceIn, priceOut } };
 }

@@ -8,7 +8,7 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   workers: 1,
   fullyParallel: false,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0, // a flaky test must show up red and be fixed, not pass on a second try (each test resets the database, so a rerun is cheap)
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: CLIENT_ORIGIN, trace: 'retain-on-failure' },
   webServer: [

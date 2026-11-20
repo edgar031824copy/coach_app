@@ -7,7 +7,8 @@
     "start": "node dist/index.js",
     "manual-check": "npm run build && node --env-file-if-exists=../.env dist/coach/manual-check.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "plan-check": "npm run build && node --env-file-if-exists=../.env dist/coach/plan-check.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

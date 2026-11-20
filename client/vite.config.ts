@@ -8,6 +8,6 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react()],
   resolve: { alias: { shared: fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) } },
-  server: { proxy: { '/api': 'http://localhost:3000' } },
+  server: { proxy: { '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000' } },
   test: { environment: 'jsdom', setupFiles: ['./src/test-setup.ts'] },
 });

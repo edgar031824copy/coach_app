@@ -5,7 +5,9 @@
   "workspaces": [
     "shared",
     "server",
-    "client"
+    "client",
+    "e2e",
+    "evals"
   ],
   "engines": {
     "node": ">=22"

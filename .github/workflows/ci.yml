@@ -128,9 +128,47 @@ jobs:
           curl -sf http://localhost:3111/health | grep -q '"status":"ok"'
           kill $pid
 
+  # The main journey in a real browser: the built server with the fake coach on a real Postgres, and the client.
+  # Playwright starts both (e2e/playwright.config.ts) and creates its own database on this service.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coach_app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/coach_app_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run e2e -w e2e
+      - name: Keep the traces of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: e2e/test-results
+          if-no-files-found: ignore
+
   ci-complete:
     if: always()
-    needs: [secret-scan, dependency-audit, checks, clean-build]
+    needs: [secret-scan, dependency-audit, checks, clean-build, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Require every needed job to succeed or be skipped

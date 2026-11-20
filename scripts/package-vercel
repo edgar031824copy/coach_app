@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+// Packages a built client for `vercel deploy --prebuilt` (Vercel Build Output API, version 3): the built files go to
+// <out>/static and <out>/config.json says which version of the format it is. The deploy workflow builds and scans the client
+// itself, so Vercel's root-directory and monorepo settings play no part.
+// Usage:  scripts/package-vercel <built-client-folder> <output-folder>        exit 0 done, 2 bad input (nothing written)
+import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const [src, out] = process.argv.slice(2);
+if (!src || !out) {
+  console.error('package-vercel: usage: scripts/package-vercel <built-client-folder> <output-folder>');
+  process.exit(2);
+}
+if (!existsSync(src) || !statSync(src).isDirectory() || !existsSync(join(src, 'index.html'))) {
+  console.error('package-vercel: the built client folder is missing or has no index.html. Build the client first.');
+  process.exit(2);
+}
+rmSync(out, { recursive: true, force: true });
+mkdirSync(out, { recursive: true });
+cpSync(src, join(out, 'static'), { recursive: true });
+writeFileSync(join(out, 'config.json'), `${JSON.stringify({ version: 3 })}\n`);
+console.log('package-vercel: the client is packaged.');

@@ -1,0 +1,92 @@
+name: Deploy
+
+# Runs only after CI finished green on a push to master (a PR run, a red run or another branch never deploys).
+# Order: migrate the database, deploy the server (Render), deploy the client (Vercel), smoke test the live URLs.
+# The first failing step stops the rest. A failed run is also posted on the commit as a failed status.
+#
+# This repository is PUBLIC, so this log is public. The live URLs, keys and the database string are GitHub secrets
+# (masked in the log) and no step prints a URL, a host, a header or a response body.
+# The providers' own Git auto-deploy is turned off in their dashboards, so this workflow is the only way anything deploys.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+
+# Deploys take turns; a newer one waits instead of cancelling a deploy that is half done.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: 1. Migrate the database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run migrate -w server
+
+      - name: 2. Deploy the server (Render)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node scripts/render-deploy
+
+      - name: 3a. Build the client and scan the bundle
+        env:
+          VITE_API_URL: ${{ secrets.SERVER_URL }}
+        run: |
+          npm run build -w client
+          node scripts/scan-bundle client/dist
+          node scripts/package-vercel client/dist .vercel/output
+
+      - name: 3b. Deploy the client (Vercel)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        # The CLI prints the deployment address, so its output is kept in a file and never shown.
+        run: |
+          if npx --yes vercel@66.5.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN" > "$RUNNER_TEMP/vercel.out" 2>&1; then
+            echo "Vercel: the client is deployed."
+          else
+            echo "Vercel: the deploy failed (the CLI output is hidden because it can contain addresses)."
+            exit 1
+          fi
+
+      - name: 4. Smoke test the live stack
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          CLIENT_URL: ${{ secrets.CLIENT_URL }}
+        run: node scripts/smoke-test
+
+      - name: Report the result on the commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+        run: |
+          if [ "$STATE" = "success" ]; then desc="Deployed: migrated, server, client and smoke test passed."; else desc="Deploy failed. Open the run to see which step stopped it."; fi
+          gh api "repos/${{ github.repository }}/statuses/$SHA" \
+            -f state="$STATE" -f context="deploy" -f description="$desc" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > /dev/null

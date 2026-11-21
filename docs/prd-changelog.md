@@ -4,6 +4,16 @@ History of `prd-coach-app.md`, newest first. Each version lists what was added, 
 
 Dates come from the git history and the working sessions; for exact diffs, use `git log -- prd-coach-app.md`.
 
+## 1.8 (2026-11-21)
+
+**Added**
+- Epic **E1c, Plan quality**: the coach's plan names concrete CrossFit movements with sets and reps (S7) and differs in structure between levels, with the safety rules that it never prescribes loads, respects reported pain, and labels everything a suggestion. Depends on E1 and follows E1b, because the response schema and the plan view change. Its exit criteria extend the golden set and rewrite `evals/baseline.json`.
+
+**Changed**
+- Should item S7 is now assigned to E1c (it was unscheduled in 1.7). The critical path reads E1, spikes, E1b, then E1c, then E2.
+
+**Why:** the first live check of E1 showed plans that are correct but basic. E1 passed its exit criteria as written, so the improvement is a new epic, and it is small because the eval harness and the deploy already exist. E1's scope and exit criteria are unchanged.
+
 ## 1.7 (2026-11-21)
 
 **Added**

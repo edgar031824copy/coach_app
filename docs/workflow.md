@@ -4,7 +4,7 @@ This document explains how coach_app is built, and the harness that enforces it,
 
 **The harness is not this file.** The harness is the machinery: hooks and settings in `.claude/`, the reviewer agents, skills, scripts, CI workflows, and branch protection. This document explains the intent and gives the map. When a piece is built, the file that implements it is the source of truth, and this document links to it; if the two disagree, the file wins and this document gets fixed. Rules that must never have exceptions live in hooks and CI, not in prose.
 
-**Status legend:** ✅ built · 🔲 planned (designed, not built yet). Built so far: OpenSpec setup, CI with `ci-complete`, branch protection, both reviewer agents, hooks, deny rules, `scripts/phase`, `scripts/trace`. Still 🔲: `deploy.yml`, `e2e/`, `evals/`.
+**Status legend:** ✅ built · 🔲 planned (designed, not built yet). Built: OpenSpec setup, CI with `ci-complete`, branch protection, both reviewer agents, hooks, deny rules, `scripts/phase`, `scripts/trace`, `deploy.yml`, `e2e/`, `evals/`.
 
 ## 1. What the harness is, and why
 
@@ -108,8 +108,8 @@ Branch names: `spec/<change>` and `feat/<change>-<n>`. Squash-merge into `master
 
 ### 7.1 Deployment
 
-- **E1 is built and run locally.** Its last task creates the deploy workflow and puts the base scaffold on a URL.
-- **From then on, every merged epic deploys through GitHub Actions** (`deploy.yml` 🔲): it runs on a push to `master`, only after CI passes. Order: migrate the database, deploy the server, deploy the client, run a smoke test against the live URLs. Secrets live in GitHub Actions secrets.
+- **E1 was built and run locally;** its last task created the deploy workflow and put the app on a URL.
+- **From then on, every merged epic deploys through GitHub Actions** (`deploy.yml` ✅): it runs on a push to `master`, only after CI passes. Order: migrate the database, deploy the server, deploy the client, run a smoke test against the live URLs. Secrets live in GitHub Actions secrets.
 - **The providers' own Git auto-deploy is disabled,** so nothing deploys twice and nothing deploys past a red CI.
 - **Merging is the deploy approval (G5).** No separate approval step for now; a GitHub "production" environment with a required reviewer can be added later.
 - **No staging environment.** Local development, CI with a fake coach, and one production environment.
@@ -149,7 +149,7 @@ This protects against the failure noted in the solo-mode review: a later epic lo
 
 ### 9.1 End-to-end tests and QA
 
-- **Deterministic E2E (hard):** Playwright tests in `e2e/` 🔲, run in CI against the local stack: the real server, a real Postgres service container, and a **fake coach**, so there is no cost and no flakiness.
+- **Deterministic E2E (hard):** Playwright tests in `e2e/` ✅, run in CI against the local stack: the real server, a real Postgres service container, and a **fake coach**, so there is no cost and no flakiness.
 - Each E2E test carries `@spec(<id>)` and covers a user journey from the scenarios the owner approved at G1. They are derived from those scenarios and written first, so the agent is not grading its own homework.
 - After a deploy, a smoke test runs against the live URLs (the last task of E1).
 - **Exploratory QA (soft):** at G4, Claude drives the running app in a browser (`/verify`) looking for problems scripted tests miss. Findings are triaged by the owner; a confirmed bug becomes a test.
@@ -159,7 +159,7 @@ This protects against the failure noted in the solo-mode review: a later epic lo
 
 Unit tests cannot judge whether coaching advice is good. For epics that change AI behavior, the coach is tested against a **golden set**.
 
-- **The set:** about 30 fixed scenarios (PRD §8.3) in `evals/` 🔲. Each is an input plus the properties the answer must have, not a stored sentence.
+- **The set:** about 30 fixed scenarios (PRD §8.3) in `evals/` ✅ (E1 starts with 7 cases; the set grows toward about 30 with later epics). Each is an input plus the properties the answer must have, not a stored sentence.
 - **Checks are code first.** Structured coach output lets code test: a suggestion exists, it cites metrics, the referral flag is set, nothing was auto-applied. A binary pass/fail AI judge (a different or stronger model, calibrated against the owner's own labels) is used only for fuzzy criteria such as "plain and sensible reason".
 - **Repeats:** each scenario runs N times (default 1 🔶, to keep API cost low; raise it if results prove flaky, for example to 3 with 2 of 3 for quality) because answers vary. Safety checks (pain referral, no diagnosis, nothing auto-applied) must pass on **every** run; quality checks must pass on at least a set share of runs (with N=1, the single run must pass).
 - **Baseline:** pass rates are stored in `evals/baseline.json`. After any change to the prompt or the model, rerun and compare. A safety drop, or a quality check below its threshold, blocks the change.

@@ -7,15 +7,16 @@ A coach for hybrid athletes (running + CrossFit). It builds a combined training 
 
 ## Status
 
-- Harness: **partly built.** Built: CI, branch protection, reviewer agents, hooks and deny rules (`.claude/settings.json`), `scripts/phase`, `scripts/trace`. Still planned: `deploy.yml`, `e2e/`, `evals/` (status legend in `docs/workflow.md`).
-- Code: not scaffolded. The first task of epic E1 creates the project.
-- Active change: `coach-onboarding-first-plan` (E1), approved; state in `docs/.phase`.
-- Epic briefs live in `docs/epics/`. E1's brief (`docs/epics/E1-onboarding-first-plan.md`) passed gate G0, and its change `coach-onboarding-first-plan` passed G1 (Spec PR merged). The earlier course-style spec and task files were folded into it and removed.
+- Harness: **built.** CI, branch protection, reviewer agents, hooks and deny rules (`.claude/settings.json`), `scripts/phase`, `scripts/trace`, the deploy workflow (`.github/workflows/deploy.yml`), Playwright `e2e/` and the `evals/` runner (status legend in `docs/workflow.md`).
+- Code: epic E1 (`coach-onboarding-first-plan`) is built, deployed and archived (PRD 1.8 on `master`). Its 38 requirements are in `openspec/specs/`.
+- Active change: none. Next: the E1 retro, then spike X4 and epic E1b; E1c (plan quality) follows. State in `docs/.phase`.
+- Epic briefs live in `docs/epics/`. Each epic's brief passes G0 before its change starts.
 
 ## Stack (decided, see PRD §13)
 
 React + Vite + TypeScript (client, Vercel) · Node + Express + TypeScript (server, Render) · PostgreSQL on Supabase · Anthropic SDK (`claude-sonnet-5-5`) on the server only · Vitest, supertest, `pg-mem`.
-Layout: `client/`, `server/`, `openspec/`, `docs/`. Commands will be listed here once the project exists.
+Layout: `client/`, `server/`, `shared/` (Zod schemas and the onboarding validation both sides use), `e2e/` (Playwright), `evals/` (real-model checks), `scripts/`, `openspec/`, `docs/`.
+Commands (from the repo root): `npm run typecheck`, `npm run lint`, `npm test`, `npm run e2e -w e2e`. Local server: `npm run dev -w server` (fake coach, local database); migrations: `npm run migrate:dev -w server`. Real-model checks, run by the owner and never in CI: `npm run evals -w evals`, `npm run plan-check -w server`. Details: `README.md`.
 
 ## The flow in one screen
 

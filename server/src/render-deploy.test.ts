@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // secret key, and the CI log of this public repository is public: it must print status names only, never the key, the
 // service id, the API address or a response body. Here it runs against a fake Render API.
 const SCRIPT = fileURLToPath(new URL('../../scripts/render-deploy', import.meta.url));
-const KEY = 'rnd_SECRETKEY0451';
+const KEY = 'rnd_SECRETKEY0451'; // a made-up value for the fake API; gitleaks:allow
 const SERVICE = 'srv-secretservice0451';
 const BODY_MARKER = 'SECRET-BODY-TEXT-0451';
 const closers: (() => Promise<void>)[] = [];

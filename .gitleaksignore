@@ -1,0 +1,3 @@
+# A made-up key used only to prove that scripts/render-deploy never prints it (the fake Render API in the test).
+# The value is not a credential; this is the commit that first had the line, before it got a `gitleaks:allow` comment.
+c22a5066f99d8156dde3d0f3bc761dd1a8480ef8:server/src/render-deploy.test.ts:generic-api-key:12

@@ -99,7 +99,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci && npm run build -w server
+      - name: Install and build the server the way Render does
+        # Render sets NODE_ENV=production, which makes a plain `npm ci` skip dev dependencies (typescript); its build command
+        # is `npm ci --include=dev && npm run build -w server`. Only this step runs in production mode: the health check
+        # below uses the fake coach, which the server refuses in production.
+        env:
+          NODE_ENV: production
+        run: npm ci --include=dev && npm run build -w server
       - name: Build the client and scan the bundle for secrets
         # Fails on a secret variable name or the sk-ant- key prefix anywhere in the build output. It prints the file and
         # the rule, never the matched text. A server secret reaching the browser bundle is the leak this guards against.

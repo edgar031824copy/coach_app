@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+// Smoke test of a deployed stack (deploy spec: live health, write path is live, restricted origin). Run by the deploy
+// workflow after the server and the client are deployed; it can also be run by hand against any stack.
+//
+//   SERVER_URL=https://... CLIENT_URL=https://... scripts/smoke-test       exit 0 all passed, 1 a step failed, 2 not configured
+//
+// The repository is public, so the CI log is public: this script prints step names, PASS or FAIL, and a short reason
+// (a status code or an error code). It NEVER prints a URL, a host, a header value or a response body.
+// It spends no coach call: the write path is tested with an invalid body, which the server refuses with 400 before it
+// counts a call or reaches the coach.
+//
+// Optional: SMOKE_TIMEOUT_MS (per request, default 90000: a sleeping free-tier server takes about a minute to wake),
+// SMOKE_HEALTH_ATTEMPTS (default 12) and SMOKE_RETRY_DELAY_MS (default 5000): right after a deploy the new server may need
+// a moment before /health answers, so only that first step is retried.
+
+const OTHER_ORIGIN = 'https://smoke-test-other-origin.invalid';
+const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS ?? 90_000);
+const HEALTH_ATTEMPTS = Number(process.env.SMOKE_HEALTH_ATTEMPTS ?? 12);
+const RETRY_DELAY_MS = Number(process.env.SMOKE_RETRY_DELAY_MS ?? 5_000);
+
+function originOf(name) {
+  const value = process.env[name];
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+const server = originOf('SERVER_URL');
+const client = originOf('CLIENT_URL');
+if (!server || !client) {
+  console.error('smoke-test: SERVER_URL and CLIENT_URL must both be set to http(s) URLs.');
+  process.exit(2);
+}
+
+// One request. Returns the status, the headers and the body text, which callers inspect but never print.
+async function call(base, path, init = {}) {
+  const res = await fetch(`${base}${path}`, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  return { status: res.status, headers: res.headers, text: await res.text() };
+}
+// Only a code or a name: error messages can contain the host.
+const why = (err) => `(${err?.cause?.code ?? err?.name ?? 'Error'})`;
+const parse = (text) => {
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false };
+  }
+};
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let failures = 0;
+const pass = (name) => console.log(`PASS  ${name}`);
+const fail = (name, reason) => {
+  failures++;
+  console.log(`FAIL  ${name} ${reason}`.trimEnd());
+};
+// Runs one step: a thrown error (unreachable, timeout) is a failure with its code, not a crash.
+async function step(name, run) {
+  try {
+    const reason = await run();
+    if (reason === null) pass(name);
+    else fail(name, reason);
+  } catch (err) {
+    fail(name, why(err));
+  }
+}
+
+// 1. The server answers /health with {"status":"ok"}, retried while it starts.
+let healthy = false;
+let healthReason = '';
+for (let attempt = 1; attempt <= HEALTH_ATTEMPTS && !healthy; attempt++) {
+  try {
+    const r = await call(server, '/health');
+    const body = parse(r.text);
+    if (r.status === 200 && body.ok && body.value?.status === 'ok') healthy = true;
+    else healthReason = r.status !== 200 ? `(status ${r.status})` : '(unexpected answer)';
+  } catch (err) {
+    healthReason = why(err);
+  }
+  if (!healthy && attempt < HEALTH_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+}
+if (healthy) pass('server health');
+else {
+  fail('server health', healthReason);
+  console.log('SKIP  the other steps were skipped: the server is not healthy.');
+  process.exit(1);
+}
+
+// 2. The read path works and never calls the coach: GET /api/plan gives null or a plan record.
+await step('read path (GET /api/plan)', async () => {
+  const r = await call(server, '/api/plan');
+  if (r.status !== 200) return `(status ${r.status})`;
+  const body = parse(r.text);
+  const isPlan = body.ok && (body.value === null || (typeof body.value === 'object' && 'plan' in body.value && 'id' in body.value));
+  return isPlan ? null : '(unexpected answer)';
+});
+
+// 3. The client page is served and is the app.
+await step('client page', async () => {
+  const r = await call(client, '/');
+  if (r.status !== 200) return `(status ${r.status})`;
+  return r.text.includes('id="root"') ? null : '(not the app)';
+});
+
+// 4. CORS lets the client's own origin in, for a normal request and for the preflight of a POST.
+await step('CORS: the client origin is allowed', async () => {
+  const get = await call(server, '/api/plan', { headers: { Origin: client } });
+  if (get.headers.get('access-control-allow-origin') !== client) return '(no permission for the client origin)';
+  const pre = await call(server, '/api/plan', {
+    method: 'OPTIONS',
+    headers: { Origin: client, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' },
+  });
+  if (pre.status < 200 || pre.status >= 300) return `(preflight status ${pre.status})`;
+  if (pre.headers.get('access-control-allow-origin') !== client) return '(preflight: no permission for the client origin)';
+  return /POST/i.test(pre.headers.get('access-control-allow-methods') ?? '') ? null : '(preflight does not allow POST)';
+});
+
+// 5. Any other origin gets nothing: no permission header (not even "*"), and its preflight is not approved.
+await step('CORS: another origin is refused', async () => {
+  const granted = (headers) => {
+    const v = headers.get('access-control-allow-origin');
+    return v !== null && (v === '*' || v === OTHER_ORIGIN);
+  };
+  const get = await call(server, '/api/plan', { headers: { Origin: OTHER_ORIGIN } });
+  if (granted(get.headers)) return '(a foreign origin was given permission)';
+  const pre = await call(server, '/api/plan', { method: 'OPTIONS', headers: { Origin: OTHER_ORIGIN, 'Access-Control-Request-Method': 'POST' } });
+  return granted(pre.headers) ? '(a foreign preflight was approved)' : null;
+});
+
+// 6. The write path is routed and CORS-enabled, and refuses an invalid body with 400 before any call is counted.
+await step('invalid POST is refused with 400, no coach call', async () => {
+  const r = await call(server, '/api/plan', { method: 'POST', headers: { Origin: client, 'Content-Type': 'application/json' }, body: '{}' });
+  if (r.status !== 400) return `(status ${r.status}, expected 400)`;
+  const body = parse(r.text);
+  if (!body.ok || body.value?.error !== 'validation_error') return '(the 400 is not a validation error)';
+  if ('remainingCallsToday' in body.value) return '(a coach call was counted)';
+  return r.headers.get('access-control-allow-origin') === client ? null : '(the 400 has no permission for the client origin)';
+});
+
+console.log(failures === 0 ? '\nsmoke test: all steps passed.' : `\nsmoke test: ${failures} step(s) failed.`);
+process.exit(failures === 0 ? 0 : 1);

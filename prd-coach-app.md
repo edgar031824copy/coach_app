@@ -1,11 +1,11 @@
 # PRD · Virtual Hybrid Coach
 
-**Version:** 1.6
+**Version:** 1.7
 **Date:** 2026-11-16 (latest change; see the changelog)
 **Status:** Draft, pre-validation phase
 **Repo:** `coach_app` (this document is the source of truth for what to build and why)
 
-**Latest change (1.6):** added epic E1b (UI foundation), spike X4 (UI direction), and Should item S6 (a designed, usable interface). Before that (1.5): epic E8 (daily WOD check), spike X3, risk R12, the deployment rule, and a validation checkpoint measured in rated suggestions. Full history: `docs/prd-changelog.md`. Change rules: `docs/workflow.md` section 7.2. Decisions and their reasons: `docs/decisions/`.
+**Latest change (1.7):** added Should item S7 (the coach names concrete CrossFit movements in its suggested sessions). Before that (1.6): epic E1b (UI foundation), spike X4 (UI direction), and Should item S6 (a designed, usable interface). Before that (1.5): epic E8 (daily WOD check), spike X3, risk R12, the deployment rule, and a validation checkpoint measured in rated suggestions. Full history: `docs/prd-changelog.md`. Change rules: `docs/workflow.md` section 7.2. Decisions and their reasons: `docs/decisions/`.
 
 **Legend:** 🔶 = assumption (plausible, not yet validated). 🔵 = open question (unknown, needs discovery).
 
@@ -138,6 +138,7 @@ MoSCoW sorts features into Must have, Should have, Could have, and Won't have (f
 | S4 | Athlete accounts with social login (Google first). Needed before opening the app to box athletes; Garmin is a separate data connection, not a login |
 | S5 | Per-athlete usage quota for coach calls (free allowance, counted per account); requires S4 |
 | S6 | A designed, usable interface: clear structure and navigation, a mobile layout, plain wording for labels and errors, and an accessibility baseline. The author wants the app to be good to use, not only correct |
+| S7 | Concrete CrossFit movements in the plan: for the CrossFit days it suggests, the coach names movements and sets (for example a lift with sets and reps, or a short conditioning piece) instead of only a class focus, within safety limits (no heavy lifts prescribed without the athlete's own numbers, nothing for a reported injury) and labeled as a suggestion, not as what the box programs (risk R12). Found at the first live check of E1, where the plan said only "strength focus plus short metcon" |
 
 ### Could Have
 
@@ -209,7 +210,7 @@ An **epic** is a coherent capability that delivers a user-visible outcome and is
 | M4 | E3 | | S3 | E6 |
 | M5 | E4 | | S4, S5 | E7 |
 | M6 | E5 | | C5 (daily workout part), C7 (image reading and confirm step for the workout) | E8 |
-| S6 | E1b | | C1 to C4, C6, C8; C5 weekly programming; C7 file upload and running-plan confirm step | not scheduled |
+| S6 | E1b | | C1 to C4, C6, C8; C5 weekly programming; C7 file upload and running-plan confirm step; S7 | not scheduled |
 
 ---
 

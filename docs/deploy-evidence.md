@@ -20,7 +20,7 @@ Legend: ✅ observed on the real stack · 🔶 not observed on the real stack, c
 
 @manual(deploy/deploy-order-behind-green-ci/provider-auto-deploy-is-off)
 
-Settings made by the owner in the dashboards: Render auto-deploy Off, Vercel Git connection disconnected. Check after the first merge: the Render deploys list shows one deploy for the merge commit (trigger: API), and Vercel shows one production deployment. Owner to confirm: ______
+Settings made by the owner in the dashboards: Render auto-deploy Off, Vercel Git connection disconnected. Check after the first merge: the Render deploys list shows one deploy for the merge commit (trigger: API), and Vercel shows one production deployment. ✅ Confirmed by the owner after the first merge: Render and Vercel each show one deployment for it, both made by the workflow, none by the provider itself.
 
 ## Failure handling
 

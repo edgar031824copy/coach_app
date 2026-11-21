@@ -4,6 +4,13 @@ History of `prd-coach-app.md`, newest first. Each version lists what was added, 
 
 Dates come from the git history and the working sessions; for exact diffs, use `git log -- prd-coach-app.md`.
 
+## 1.7 (2026-11-21)
+
+**Added**
+- Should item **S7**, concrete CrossFit movements in the plan: the coach names movements and sets for the CrossFit days it suggests, within safety limits and labeled as a suggestion, not as the box's programming.
+
+**Why:** at the first live check of E1 the generated plan described CrossFit days only as "strength focus plus short metcon", which the author found too basic to train from. S7 is not scheduled yet: it needs an epic chosen after E1b, and its sessions can differ from what the box programs (risk R12), so it fits with the plan-quality work and the box-board reading of E8. E1's scope and exit criteria are unchanged.
+
 ## 1.6 (2026-11-16)
 
 **Added**

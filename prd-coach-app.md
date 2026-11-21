@@ -1,11 +1,11 @@
 # PRD · Virtual Hybrid Coach
 
-**Version:** 1.7
+**Version:** 1.8
 **Date:** 2026-11-16 (latest change; see the changelog)
 **Status:** Draft, pre-validation phase
 **Repo:** `coach_app` (this document is the source of truth for what to build and why)
 
-**Latest change (1.7):** added Should item S7 (the coach names concrete CrossFit movements in its suggested sessions). Before that (1.6): epic E1b (UI foundation), spike X4 (UI direction), and Should item S6 (a designed, usable interface). Before that (1.5): epic E8 (daily WOD check), spike X3, risk R12, the deployment rule, and a validation checkpoint measured in rated suggestions. Full history: `docs/prd-changelog.md`. Change rules: `docs/workflow.md` section 7.2. Decisions and their reasons: `docs/decisions/`.
+**Latest change (1.8):** added epic E1c (plan quality) and gave Should item S7 (concrete CrossFit movements) to it. Before that (1.7): S7 itself. Before that (1.6): epic E1b (UI foundation), spike X4 (UI direction), and Should item S6 (a designed, usable interface). Before that (1.5): epic E8 (daily WOD check), spike X3, risk R12, the deployment rule, and a validation checkpoint measured in rated suggestions. Full history: `docs/prd-changelog.md`. Change rules: `docs/workflow.md` section 7.2. Decisions and their reasons: `docs/decisions/`.
 
 **Legend:** 🔶 = assumption (plausible, not yet validated). 🔵 = open question (unknown, needs discovery).
 
@@ -168,12 +168,13 @@ MoSCoW sorts features into Must have, Should have, Could have, and Won't have (f
 
 An **epic** is a coherent capability that delivers a user-visible outcome and is small enough to be built as **one OpenSpec change** (roughly up to 10 tasks or about a week). If an epic grows past that, split it into two epics (for example E2a and E2b) before starting. This section is the roadmap level: what, why, order, and when an epic is finished. Just before an epic starts, a fuller **epic brief** is written in `docs/epics/` and checked against the Definition of Ready in `docs/workflow.md`, so that it reflects what earlier epics taught us. Process lives in `docs/workflow.md`; this section owns the content.
 
-**Order (critical path):** E1 → spikes X1, X2 and X4 (in parallel) → E1b → E2 → E3 → E4 → E5 → E6 → the validation checkpoint (§10) → E7. E8 depends only on E1 and spike X3; its position in this order is decided after E1, because it can deliver suggestions (and start the trial) before Garmin is connected.
+**Order (critical path):** E1 → spikes X1, X2 and X4 (in parallel) → E1b → E1c → E2 → E3 → E4 → E5 → E6 → the validation checkpoint (§10) → E7. E8 depends only on E1 and spike X3; its position in this order is decided after E1, because it can deliver suggestions (and start the trial) before Garmin is connected.
 
 | Epic | Outcome | Depends on |
 |---|---|---|
 | **E1** Onboarding and first plan | An athlete gets a one-week combined plan with no Garmin data, optionally built around their own running plan | none |
 | **E1b** UI foundation | The app has a designed interface the author is willing to show others: page structure, visual design, clear wording and error messages, a mobile layout, and an accessibility baseline, with no change in behavior | E1, Spike X4 |
+| **E1c** Plan quality | The generated plan is specific enough to train from: CrossFit days name concrete movements and sets, and the sessions fit the athlete's stated level and volume, still as suggestions and with no loads prescribed | E1 |
 | **E2** Garmin connection | Activity and recovery data flows into the app | Spike X1 |
 | **E3** Load model and rule baseline | A deterministic combined-load number per day, plus the simple threshold rule that is the baseline for the riskiest-assumption test (§10) | E2, Spike X2 |
 | **E4** Suggestions | Overload produces a reasoned suggestion the athlete accepts, modifies, or ignores | E3 |
@@ -186,6 +187,7 @@ An **epic** is a coherent capability that delivers a user-visible outcome and is
 
 - **E1.** Scope: onboarding form, plan generation, optional pasted running plan kept as is, saved plan, and a first deploy as the last task (a GitHub Actions workflow that deploys only after CI passes; E1 itself is built and run locally). Exit: UC1 acceptance criteria pass; a plan is produced with zero Garmin data; a pasted running plan comes back unchanged (§8.3 check 6); a coach failure never leaves a partial plan; the daily cap on coach calls works; the app runs on its deployed URLs. Risks: R5, R6, R7, R9, R11.
 - **E1b.** Scope: apply the direction chosen in X4 to the E1 screens: page structure and navigation (likely the plan as the home screen once one exists, with the onboarding form as a step), a small design system (tokens and components), a mobile-first layout, the wording of labels, empty and error states and the "waking up the coach" state, and an accessibility baseline. No new features and no behavior change. Exit: every E1 scenario still passes unchanged; the author completes the E1 flow (onboarding, plan, reload, "Plan next week", each error state) on a phone and on a desktop browser; an accessibility review against WCAG 2.1 AA finds no blocking issue 🔶; the design system is documented in the repo so later epics reuse it. Risk: none new.
+- **E1c.** Scope: change the coach's prompt and response format so each CrossFit session lists movements with sets and reps or a time cap (S7), and so intermediate and advanced athletes get plans that differ in structure, not only in distance (found at the first live check of E1). Safety rules: the coach never prescribes loads (no kilograms or percentages); it says to scale to the athlete's own numbers; a reported injury or pain excludes movements that load the affected area; everything stays labeled as a suggestion, not as the box's programming. The coach's response schema and the plan view change, so it follows E1b. Exit: the golden set (§8.3) gains checks that every CrossFit session names at least one movement and that no load is prescribed, and they pass at the §9.2 thresholds; the earlier E1 checks (pasted plan unchanged, safety note on pain, one rest day) still pass and `evals/baseline.json` is rewritten from a full 3-repeat run; the author judges plans for two levels on the live app better than the E1 plans. Risks: R12 (movements may differ from what the box programs), R6.
 - **E2.** Precondition: before real Garmin data is stored on the deployed app, an access gate exists (a small owner-password change, or E7 brought forward); decide this before E2 starts. Scope: connect the author's Garmin account and sync activities and recovery metrics. Exit: the author's data is synced and stored; credentials or tokens are never exposed to the client or the repo; missing or stale data degrades gracefully (Principle 3); how much history to import is set after X1. Risks: R3, R5.
 - **E3.** Scope: no LLM. Daily load per discipline computed from Garmin data and planned sessions, with CrossFit load defined by X2; the threshold rule. Exit: with fixture data, the load numbers are deterministic and tested; the rule flags every scripted overload scenario and stays quiet on the no-overload ones. Risk: R4.
 - **E4.** Scope: suggestion generation with plain-language reasons, accept/modify/ignore, pain-report behavior, the evaluation set from §8.3. Exit: UC2, UC3, UC4 acceptance criteria pass; §8.3 checks 1 to 5 meet their thresholds; no change is ever applied without an athlete action. Risks: R1, R6, R8.
@@ -210,7 +212,8 @@ An **epic** is a coherent capability that delivers a user-visible outcome and is
 | M4 | E3 | | S3 | E6 |
 | M5 | E4 | | S4, S5 | E7 |
 | M6 | E5 | | C5 (daily workout part), C7 (image reading and confirm step for the workout) | E8 |
-| S6 | E1b | | C1 to C4, C6, C8; C5 weekly programming; C7 file upload and running-plan confirm step; S7 | not scheduled |
+| S6 | E1b | | C1 to C4, C6, C8; C5 weekly programming; C7 file upload and running-plan confirm step | not scheduled |
+| S7 | E1c | | | |
 
 ---
 

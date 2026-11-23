@@ -56,3 +56,7 @@ Start each task from `docs/.phase` and the active change, not from chat history;
 ## Learnings
 
 - Default OpenSpec generation assumes scaffolding exists. This repo is greenfield, so each early change must include scaffolding tasks and `openspec/config.yaml` context must say so.
+- The repository is public, so CI logs are public. Scripts and workflows print step names, status words and codes only, never a URL, host, header, key or response body. Live URLs, keys and the database string are GitHub secrets.
+- The root `.env` holds production values. Do not run a script that loads it unless the owner asks; local `dev` and `migrate:dev` use a local database and the fake coach on purpose.
+- Never write the owner's personal training data (their own plan, sessions, paces) into the repo, a PR or a test. A made-up key in a test needs `gitleaks:allow` on its line, or the secret scan fails.
+- For hosting setup, write down the order up front: the server address and the client address depend on each other, so create both projects first, then set each side's variables.

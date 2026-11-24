@@ -1,6 +1,6 @@
 # 0007. UI direction for E1b (spike X4)
 
-**Status:** Proposed
+**Status:** Accepted (owner merged the proposal, 2026-11-24)
 **Date:** 2026-11-23
 
 ## Context

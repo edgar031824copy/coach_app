@@ -47,3 +47,7 @@ Changes in the form view (same fields, same values, same validation and submit a
 - **Primary button** in a bar pinned to the bottom of the screen on a phone. (A full-page screenshot shows the bar in the middle; on a real screen it sits at the bottom.)
 
 Alternative not built: a step-by-step wizard (one question per screen). It focuses attention, but it adds back and next logic and per-step validation for six answers; it is more behavior to keep consistent with E1's rules.
+
+## Decision (owner, 2026-11-24)
+
+**H (light) is the direction for E1b**: the F/H visual language (soft page, white rounded cards, icon tiles, one blue accent, summary card) and the round 4 form. Light only in E1b; the dark theme (G and I show it) is a later, separate change. Details can be refined later. Open points to settle when the specs are written: the wording of the goal quick-idea chips, the exact accent blue, one self-hosted font, whether the summary card stays.

@@ -72,6 +72,7 @@ These are gates of the setup task; failing one triggers the "Revisit" clause of 
 ## 10. Decisions (owner)
 
 - Decided in the G0 discussion (2026-11-24): the two views with "New plan" as an empty form; a dark theme only if the chosen mockup needs it; mockups first; "highlight today" dropped.
+- Chosen mockup (2026-11-24): H, light only; dark is a later change; see `docs/design/README.md`.
 - Mockups are done after G0 and before the Spec PR (so nothing conditional is left in the frozen specs).
 - The bundle budget in R1 is a proposal; it is fixed by the owner after the size is measured, and the specs state the figure then.
 - `docs/design-system.md` is documentation and is not tested.

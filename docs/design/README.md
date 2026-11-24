@@ -31,3 +31,19 @@ Owner feedback on D: likes light, day buttons too big (on a computer), wants it 
 - **Images:** none yet. The icons and the soft gradient in the summary card carry the look. Photos would add weight, a licensing check and a design risk; if wanted, they come in a later round (a few self-hosted, licensed images or illustrations).
 - **Dark (G):** the same design with the dark tokens; the real build can follow the phone's setting.
 - The safety note is still rose-toned and only appears when the plan has one.
+
+## Round 4 (H light, I dark): the form view
+
+Owner feedback on F/G: much better; start with light and add dark later; the "New plan" form is too basic. Research (sources linked in ADR 0007's follow-up note below): single-column forms with related fields grouped into sections, progressive disclosure (fold away what most people skip), a progress cue, errors shown next to the field, and a primary button near the bottom. Runna's own onboarding is a 26-step quiz, far heavier than this form needs, so a wizard was not copied.
+
+Changes in the form view (same fields, same values, same validation and submit as E1):
+- **Four sections as cards:** goal, level, week, pain or injury.
+- **Goal:** a placeholder example and quick-idea chips ("Half marathon", "10K"...) that fill the text box; the field stays free text. The chip wording is a suggestion to approve.
+- **Levels:** a three-way segmented control (Beginner, Intermediate, Advanced) instead of a select, same three values.
+- **Days:** the seven-button rows from F; 44 px on touch, 36 px with a mouse.
+- **Pain or injury stays visible** (not folded away) because it is a safety input (PRD Principle 6).
+- **Optional parts folded:** "I already follow a running plan", "My usual week" and "Target event" are collapsible rows.
+- **Progress cue:** "2 of 4 required answers done" with a thin bar (goal, both levels, at least one training day); it is a presentation of the existing rules.
+- **Primary button** in a bar pinned to the bottom of the screen on a phone. (A full-page screenshot shows the bar in the middle; on a real screen it sits at the bottom.)
+
+Alternative not built: a step-by-step wizard (one question per screen). It focuses attention, but it adds back and next logic and per-step validation for six answers; it is more behavior to keep consistent with E1's rules.

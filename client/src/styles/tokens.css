@@ -1,0 +1,79 @@
+/* The design tokens: the only place raw color values live (a test scans the rest of the source).
+   Values come from mockup H in docs/design/mockups/h/. Light theme only; a dark theme later adds a second block of
+   values for the same names (ADR 0007), so nothing outside this file changes. */
+
+:root {
+  /* Surfaces and text */
+  --page: #f7f7f8;
+  --card: #ffffff;
+  --soft: #f4f4f5;
+  --fg: #18181b;
+  --muted-fg: #52525b;
+  --border: #e4e4e7;
+
+  /* The one accent (primary button, selected day, progress) */
+  --brand: #2563eb;
+  --brand-fg: #ffffff;
+  --focus: #2563eb;
+
+  /* Disciplines: an icon color on its soft tile color */
+  --run: #2563eb;
+  --run-soft: #e8f0ff;
+  --cf: #c2410c;
+  --cf-soft: #fff0e6;
+
+  /* The safety note and failure notices, and field errors */
+  --alert-bg: #fff1f2;
+  --alert-bd: #fda4af;
+  --alert-fg: #881337;
+  --error: #b91c1c;
+}
+
+/* Tailwind theme. The color names follow shadcn/ui, so its components work without edits; each one points at a token
+   above. `inline` keeps the utilities pointing at the variables, which is what lets a second theme work later. */
+@theme inline {
+  --color-background: var(--page);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--brand-fg);
+  --color-secondary: var(--soft);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--soft);
+  --color-muted-foreground: var(--muted-fg);
+  --color-accent: var(--soft);
+  --color-accent-foreground: var(--fg);
+  --color-destructive: var(--error);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--focus);
+
+  --color-run: var(--run);
+  --color-run-soft: var(--run-soft);
+  --color-crossfit: var(--cf);
+  --color-crossfit-soft: var(--cf-soft);
+  --color-alert: var(--alert-bg);
+  --color-alert-border: var(--alert-bd);
+  --color-alert-foreground: var(--alert-fg);
+  --color-error: var(--error);
+
+  /* Type scale (rem, so the athlete's browser text size still applies): 13, 14, 16, 18, 24, 28 px */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+
+  /* Spacing: every step is a multiple of 4 px (p-1 is 4 px, p-4 is 16 px, p-6 is 24 px) */
+  --spacing: 0.25rem;
+
+  /* Corner radii: chips, buttons and fields, suggestions and notes, cards */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}

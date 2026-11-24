@@ -53,7 +53,7 @@ One file, `client/src/styles/tokens.css`, holds CSS variables for colors (page, 
 
 - Vitest: view transitions and outcomes, labels and roles, counts, folded values, chips, progress cue, token contrast (from `token-pairs.json`), no raw colors outside the token file (a source scan), every `components/ui` file named in `docs/design-system.md`.
 - Playwright in `e2e/` against the fake coach: the E1 journey on the new controls; keyboard-only journey; no horizontal overflow at 360, 768 and 1280, 44 px targets with touch emulation at 360 and 768 and 36 px with a mouse at 1280; the primary button inside the viewport at 360 by 740; reduced motion (emulated media: no running animation, no transition); heading order; `@axe-core/playwright` on each view and state (contrast rule disabled there, covered by the token test), plus checks that a long description at 360 does not overflow or clip and that every focusable element shows a visible ring. **To verify:** the axe package works with the existing Playwright version.
-- `scripts/bundle-size`: gzipped JS plus CSS of `client/dist`; `--write-baseline` records it in `client/bundle-baseline.json`, run once as the very first step of task 1.1, before Tailwind or any other dependency is installed; the check fails above baseline plus 60 KB 🔶 (the owner confirms the figure at G1). Runs in CI after the client build, next to the bundle secret scan. The script and the CI step touch the harness, so they are called out in the PR.
+- Bundle size: measured by hand, not by a script. Task 1.1 measures the gzipped JS plus CSS of `client/dist` before any dependency is added and notes it in its PR (command: build, then gzip each file in `client/dist/assets` and add the sizes); task 4.3 measures again and notes the difference against the 60 KB 🔶 budget (the owner confirms the figure at G1). No new script and no CI change.
 - Manual (`@manual`): the owner runs the E1 flow on a phone and a desktop browser, a screen reader pass, and reviews screenshots at 360, 768 and 1280.
 
 ### 6. E1 tests
@@ -69,7 +69,7 @@ Tests that assumed form and plan on one page, and the select-based level tests, 
 - **Hiding optional parts hides fields the athlete might want** → only optional ones are folded; pain or injury stays visible.
 - **Sticky action bar covers content on short screens** → the form gets bottom padding equal to the bar; the 360 by 740 check.
 - **The progress cue could disagree with validation** → both use the same field values and rule for "a training day or a pasted plan"; a test compares them.
-- **Size budget**: Tailwind's CSS is small after purging; the main risk is a heavy dependency, caught by the 60 KB check.
+- **Size budget**: Tailwind's CSS is small after purging; the main risk is a heavy dependency, caught by the manual size check at the end.
 
 ## Migration Plan
 

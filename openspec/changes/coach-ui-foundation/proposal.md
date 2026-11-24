@@ -27,7 +27,7 @@ None. Every E1 requirement and scenario stays as written.
 
 ## Impact
 
-`client/` (dependencies, `components.json`, `components/ui/`, restyled screens, rewritten structural tests); `e2e/` (journey updated, new checks); `docs/design-system.md`; `scripts/bundle-size` and one CI step (harness files). The CI clean build and the bundle secret scan must still pass.
+`client/` (dependencies, `components.json`, `components/ui/`, restyled screens, rewritten structural tests); `e2e/` (journey updated, new checks); `docs/design-system.md`. No harness change. The CI clean build and the bundle secret scan must still pass.
 
 ## Non-goals
 

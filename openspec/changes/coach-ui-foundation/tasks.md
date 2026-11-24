@@ -1,13 +1,13 @@
 ## 1. Foundation (first PR)
 
-- [ ] 1.1 Record the bundle size baseline, then set up Tailwind CSS v4 and shadcn/ui in `client/`, keeping everything green.
-  - Done when: **first**, before any dependency is added, `scripts/bundle-size` (gzipped JS plus CSS of `client/dist`, with `--write-baseline`, and a check that fails above baseline plus 60 KB 🔶) has written `client/bundle-baseline.json`; **then** Tailwind and `@tailwindcss/vite`, the `@` alias, `components.json` and the shadcn CLI are set up; the client builds, all 85 client tests and the bundle secret scan pass, the CI clean build is unchanged and green; the notes say whether shadcn's current components use Radix or Base UI.
-  - Test plan: tests for `scripts/bundle-size` (a passing size, a size over budget, a missing baseline) with mutation checks on the threshold; run `npm run build -w client`, `npm test -w client`, `node scripts/scan-bundle client/dist` and the root checks; a test that renders one shadcn `Button`. If setup fights the build, stop and revisit ADR 0007.
-  - Scenarios: `design-system/foundation-stays-small-and-clean/*`.
-- [ ] 1.2 Add the design tokens, their contrast test, and the CI size step.
-  - Done when: `client/src/styles/tokens.css` defines colors, type scale, spacing and radii from mockup H and maps them into the Tailwind theme; `token-pairs.json` lists every text-on-background pair; a source scan test finds no raw colors outside the token file; the CI clean-build job runs `scripts/bundle-size` after the client build (a harness change, called out in the PR).
-  - Test plan: tests for the contrast computation and the raw-color scan, with mutations on the ratios; run the CI step locally.
-  - Scenarios: `design-system/tokens-in-one-place/*`, `responsive-accessibility/contrast-and-signals/token-pairs-meet-contrast`, `design-system/foundation-stays-small-and-clean/*`.
+- [ ] 1.1 Measure the bundle size, then set up Tailwind CSS v4 and shadcn/ui in `client/`, keeping everything green.
+  - Done when: **first**, before any dependency is added, the gzipped size of the JS and CSS in `client/dist` is measured and written in the PR; **then** Tailwind and `@tailwindcss/vite`, the `@` alias, `components.json` and the shadcn CLI are set up; the client builds, all 85 client tests and the bundle secret scan pass, the CI clean build is unchanged and green; the notes say whether shadcn's current components use Radix or Base UI.
+  - Test plan: run `npm run build -w client`, `npm test -w client`, `node scripts/scan-bundle client/dist` and the root checks; a test that renders one shadcn `Button`. If setup fights the build, stop and revisit ADR 0007.
+  - Scenarios: `design-system/foundation-stays-small-and-clean/bundle-scan-still-passes`.
+- [ ] 1.2 Add the design tokens and their contrast test.
+  - Done when: `client/src/styles/tokens.css` defines colors, type scale, spacing and radii from mockup H and maps them into the Tailwind theme; `token-pairs.json` lists every text-on-background pair;, and a source scan test finds no raw colors outside the token file.
+  - Test plan: tests for the contrast computation and the raw-color scan, with mutations on the ratios.
+  - Scenarios: `design-system/tokens-in-one-place/*`, `responsive-accessibility/contrast-and-signals/token-pairs-meet-contrast`.
 - [ ] 1.3 Add the base components (button, card, badge, alert, input, textarea, label) and the icons, and start `docs/design-system.md`.
   - Done when: the components live in `client/src/components/ui/` styled with tokens only; the route, barbell, moon and warning icons are inline SVG components with `aria-hidden`; `docs/design-system.md` lists the tokens and each component with when to use it; a test checks every component file is named in that document.
   - Test plan: component tests for variants and states; the documentation test with a mutation (remove an entry and see it fail).
@@ -58,9 +58,9 @@
   - Test plan: run locally and in CI; mutate a heading level and a transition to see the checks fail. Verify first that `@axe-core/playwright` works with the installed Playwright; if not, say so and choose another scanner.
   - Scenarios: `form-presentation/the-primary-button-stays-in-reach-on-a-phone/*`, `responsive-accessibility/reduced-motion/*`, `responsive-accessibility/structure-for-screen-readers/*`, `plan-presentation/one-card-per-day-in-week-order/*` (layout part), `plan-presentation/sessions-are-identified-by-text/long-text-is-not-cut-off`.
 - [ ] 4.3 Finish `docs/design-system.md` and record the size result.
-  - Done when: the document lists the final tokens and components with usage; the size check passes with the final numbers noted; the open points from the mockup README (chip wording, accent, font, summary card) are recorded as decided, and the README's font line is corrected.
+  - Done when: the document lists the final tokens and components with usage; the bundle size is measured again and the difference from the number in task 1.1's PR is noted against the 60 KB 🔶 budget; the open points from the mockup README (chip wording, accent, font, summary card) are recorded as decided, and the README's font line is corrected.
   - Test plan: the documentation test; read the document against the code.
-  - Scenarios: `design-system/documented-components/*`.
+  - Scenarios: `design-system/documented-components/*`, `design-system/foundation-stays-small-and-clean/size-budget` (checked by hand).
 - [ ] 4.4 Manual checks on the live app, gate G4 and archive.
   - Done when: after the deploy the owner completes the E1 flow (onboarding, plan, reload, "Plan next week", each error state he can trigger) on a phone and on a desktop browser, judges the rest day and the safety note by eye, and does a screen reader pass, with a note in `docs/` and no URLs; `scripts/trace` covers every scenario; `/opsx:verify` has no critical finding; the change is archived.
   - Test plan: the manual run recorded with `@manual` tags; `scripts/trace`; the CI result.

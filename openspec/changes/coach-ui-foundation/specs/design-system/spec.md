@@ -22,12 +22,12 @@ The client SHALL keep its reusable components in one folder, and `docs/design-sy
 - **THEN** each component is named in the document
 
 ### Requirement: Foundation stays small and clean
-The foundation SHALL NOT add a secret to the client bundle, and SHALL add no more than 60 kilobytes 🔶 (gzipped, JavaScript and CSS together) to the client bundle size measured before any dependency of this change is added; the owner confirms the figure at G1.
+The foundation SHALL NOT add a secret to the client bundle, and SHALL add no more than 60 kilobytes 🔶 (gzipped, JavaScript and CSS together) to the client bundle size measured before any dependency of this change is added; the owner confirms the figure at G1. The sizes are measured by hand and written in the pull requests.
 
 #### Scenario: Bundle scan still passes
 - **WHEN** the client is built and the bundle secret scan runs
 - **THEN** it finds nothing
 
 #### Scenario: Size budget
-- **WHEN** the gzipped size of the built JavaScript and CSS is compared with the size recorded before this change
-- **THEN** the increase is at most 60 kilobytes
+- **WHEN** the gzipped size of the built JavaScript and CSS is measured at the end of the change and compared with the size noted in the first pull request
+- **THEN** the increase is at most 60 kilobytes (checked by hand and noted in the last pull request)

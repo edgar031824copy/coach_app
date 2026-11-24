@@ -22,3 +22,12 @@ The owner rejected A, B and C: too loud, the yellow safety box, the combined-col
 - **The safety note** appears only when the plan has one (a pain report). It is a rose-toned alert with an icon, no yellow; `plan.html` shows the normal plan and `plan-pain.html` the one with the note.
 - No week strip and no split colors: a day with two sessions simply lists both.
 - Contrast (computed from the hex values, 4.5 needed for text): light, body text 17.7, muted text 7.7, button text 5.2, CrossFit label 5.2, alert text 8.7; dark, body text 19.1, muted text 7.8, button text 7.8, alert text 14.8, CrossFit label 8.8. Touch targets are 44 px.
+
+## Round 3 (F light, G dark)
+
+Owner feedback on D: likes light, day buttons too big (on a computer), wants it more modern, maybe with images, and dark mode later. Changes:
+- **Day pickers:** seven equal buttons in one row, 44 px high on touch screens (the project's own rule) and 36 px with a mouse.
+- **Modern look:** a soft page background, each day a white rounded card with a light shadow, an icon tile per session (a route icon for running, a barbell for CrossFit, a moon for rest; simple line icons in the style of the shadcn icon set), and a summary card at the top with the counts of runs, CrossFit sessions and rest days (counted from the plan's sessions, no new data). Chips and the "Plan next week" and "New plan" buttons are smaller.
+- **Images:** none yet. The icons and the soft gradient in the summary card carry the look. Photos would add weight, a licensing check and a design risk; if wanted, they come in a later round (a few self-hosted, licensed images or illustrations).
+- **Dark (G):** the same design with the dark tokens; the real build can follow the phone's setting.
+- The safety note is still rose-toned and only appears when the plan has one.

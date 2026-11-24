@@ -43,7 +43,7 @@ describe('design tokens', () => {
     const colors = ['page', 'card', 'soft', 'fg', 'muted-fg', 'border', 'brand', 'brand-fg', 'run', 'run-soft', 'cf', 'cf-soft', 'alert-bg', 'alert-bd', 'alert-fg', 'error', 'focus'];
     for (const name of colors) expect(tokens[name], `color token --${name}`).toMatch(/^#[0-9a-fA-F]{6}$/);
     const css = readFileSync(TOKEN_FILE, 'utf8');
-    for (const name of ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'radius-sm', 'radius-md', 'radius-lg', 'radius-xl', 'spacing'])
+    for (const name of ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'radius-sm', 'radius-md', 'radius-lg', 'radius-xl', 'spacing', 'shadow-card'])
       expect(css, `--${name}`).toMatch(new RegExp(`--${name}\\s*:`));
   });
 

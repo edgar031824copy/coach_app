@@ -18,6 +18,10 @@ The form view SHALL group the fields into four sections (goal, level, week, pain
 - **WHEN** the athlete fills "Target event", closes it, and submits
 - **THEN** the request contains the event name and date
 
+#### Scenario: An error inside a folded part is never hidden
+- **WHEN** the athlete enters a past event date, closes "Target event", and submits
+- **THEN** the part opens, its error message is shown, focus is on the invalid field, and no request is sent
+
 ### Requirement: Level choice
 Each level (running and CrossFit) SHALL be chosen with one control offering Beginner, Intermediate and Advanced, with none selected on an empty form, and the same three values as E1.
 
@@ -56,11 +60,15 @@ While the goal is empty the form SHALL offer short ideas ("Half marathon", "10K"
 - **THEN** no idea is shown, so none can overwrite it
 
 ### Requirement: Progress cue
-The form SHALL show how many of its four required answers are done (goal, running level, CrossFit level, and at least one training day or a pasted plan), updating as the athlete answers. The cue SHALL NOT block or enable submitting.
+The form SHALL show how many of its four required answers are done (goal, running level, CrossFit level, and at least one training day or a pasted plan), updating as the athlete answers. The cue SHALL NOT block or enable submitting, and it is shown as text that is read with the form but not announced on every change.
 
 #### Scenario: Cue counts answers
 - **WHEN** the goal and the running level are filled and nothing else
 - **THEN** the cue reads "2 of 4 required answers done"
+
+#### Scenario: A pasted plan counts as the training-day answer
+- **WHEN** the goal, both levels and a pasted plan are filled and no day is selected
+- **THEN** the cue reads "4 of 4 required answers done", the same result as E1's rule for the required answers
 
 #### Scenario: Cue never blocks
 - **WHEN** fewer than four answers are done and the athlete presses "Build my plan"
@@ -68,6 +76,14 @@ The form SHALL show how many of its four required answers are done (goal, runnin
 
 ### Requirement: Same validation and behavior as E1
 Validation timing and messages, the focus on the first invalid field on submit, server field errors on their own fields, and the prefilled form for "Plan next week" including the week 53 field error SHALL work as in E1.
+
+#### Scenario: Instant message after leaving a field
+- **WHEN** the athlete leaves the goal field empty after touching it
+- **THEN** the E1 message for the missing goal shows next to it
+
+#### Scenario: No message on an untouched field
+- **WHEN** the form opens empty
+- **THEN** no field shows an error message
 
 #### Scenario: Server field error on its field
 - **WHEN** the server answers 400 with an error for a field
@@ -79,7 +95,7 @@ Validation timing and messages, the focus on the first invalid field on submit, 
 
 #### Scenario: Week 53 after Plan next week
 - **WHEN** the shown plan was built for week 52 and the athlete presses "Plan next week"
-- **THEN** the form opens with week 53 and its field error visible and editable before submitting
+- **THEN** the form opens with week 53 and its field error visible, focus on that field, and the value editable before submitting
 
 ### Requirement: The primary button stays in reach on a phone
 On a phone-width screen the "Build my plan" button SHALL stay visible at the bottom of the screen while the form is scrolled.

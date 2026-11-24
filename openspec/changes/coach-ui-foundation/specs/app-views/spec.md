@@ -22,8 +22,16 @@ On start the client SHALL read the saved plan with `GET /api/plan` and show a ne
 - **WHEN** the read fails
 - **THEN** the form view is shown with the message "Could not load your saved plan. You can still build a new one."
 
+#### Scenario: The failed-read message does not follow the athlete
+- **WHEN** the read failed, the athlete built a plan, and then presses "New plan"
+- **THEN** the failed-read message is no longer shown
+
+#### Scenario: Opening the page does not move focus
+- **WHEN** the page opens or reloads and the start state gives way to the first view
+- **THEN** keyboard focus is not moved by the client
+
 ### Requirement: Moving between views
-The plan view SHALL offer "Plan next week" and "New plan"; the form view SHALL offer "My plan" whenever a plan exists. No move between views SHALL send a request. "New plan" SHALL open the form with every field at its E1 default. "Plan next week" SHALL open the form prefilled from the shown plan's saved onboarding exactly as in E1. Focus SHALL move to the heading of the view that opens.
+The plan view SHALL offer "Plan next week" and "New plan"; the form view SHALL offer "My plan" whenever a plan exists. No move between views SHALL send a request. "New plan" SHALL open the form with every field at its E1 default. "Plan next week" SHALL open the form prefilled from the shown plan's saved onboarding exactly as in E1. Focus SHALL move to the main heading of the view that opens, except on the first view after the page opens, and except when the form opens with a field error, where it moves to the first field with an error. The form view's main heading is "New plan" and the plan view's is "Your plan".
 
 #### Scenario: New plan opens an empty form
 - **WHEN** the athlete presses "New plan" while a plan is shown
@@ -38,11 +46,19 @@ The plan view SHALL offer "Plan next week" and "New plan"; the form view SHALL o
 - **THEN** the plan view shows the same plan as before, no request is sent, and focus is on the plan view's heading
 
 #### Scenario: Focus follows the view
-- **WHEN** a view opens
-- **THEN** keyboard focus is on that view's main heading, except that when the form view opens with field errors showing, focus is on the first field with an error
+- **WHEN** the athlete opens a view by pressing "New plan", "My plan" or "Plan next week" with a form that has no field error
+- **THEN** keyboard focus is on that view's main heading
+
+#### Scenario: Focus goes to the first error when the form opens with one
+- **WHEN** the shown plan was built for week 52 and the athlete presses "Plan next week", so the form opens with the week 53 error showing
+- **THEN** keyboard focus is on the first field with an error and not on the heading
+
+#### Scenario: Plan next week uses the saved plan
+- **WHEN** a submit fails, the athlete presses "My plan", then "Plan next week"
+- **THEN** the form is prefilled from the saved plan's onboarding and not from the failed attempt, and anything typed but not submitted is gone
 
 ### Requirement: Outcomes of a submit
-While a request runs the form view SHALL stay open, "Build my plan" SHALL be disabled, and "My plan" SHALL be disabled. A success SHALL open the plan view with the new plan. A failure SHALL leave the form view open with the failure shown, the earlier plan SHALL remain reachable through "My plan", and the failure and field errors SHALL clear when the view changes.
+While a request runs the form view SHALL stay open, "Build my plan" SHALL be disabled, and "My plan" SHALL be disabled. A success SHALL open the plan view with the new plan. A failure SHALL leave the form view open with the failure shown, the earlier plan SHALL remain reachable through "My plan", the failure and field errors SHALL clear when the view changes, and focus SHALL move to the first field with an error or, when there is none, to the failure message.
 
 #### Scenario: Success shows the new plan
 - **WHEN** a submit succeeds
@@ -55,6 +71,10 @@ While a request runs the form view SHALL stay open, "Build my plan" SHALL be dis
 #### Scenario: A failure does not follow the athlete to a new form
 - **WHEN** a submit fails, the athlete presses "My plan", then "New plan"
 - **THEN** the empty form shows no failure message and no field error
+
+#### Scenario: A failure moves focus
+- **WHEN** a submit fails with a failure that names no field (the coach is unavailable, a timeout, a network error, or the daily limit)
+- **THEN** keyboard focus moves to the failure message
 
 #### Scenario: Controls are disabled while the request runs
 - **WHEN** a submit is in flight
@@ -71,6 +91,10 @@ The client SHALL keep the wording of the labels and messages that the E1 specs n
 - **WHEN** a plan with an athlete session, a recommendation, a rest day, a pasted-plan week and a safety note is shown
 - **THEN** the text "from your plan", "coach suggestion", "Rest day", "Week N of your running plan" and the safety note appear, and "Plan next week" is offered
 
-#### Scenario: Every E1 scenario still passes
-- **WHEN** the E1 scenario tests run against the redesigned client
-- **THEN** every E1 scenario passes, each test keeping its `@spec` tag and its intent, observed within the view where its subject lives
+#### Scenario: Accessible names are kept
+- **WHEN** the plan view is shown
+- **THEN** it has a heading named "Your plan", a list named "Coach suggestions" when the plan has recommendations, a note named "Safety note" when it has a safety note, and seven items each named by its day
+
+#### Scenario: E1 test tags are kept
+- **WHEN** `scripts/trace` runs against this change
+- **THEN** no `@spec` tag that exists on `master` is missing, so every E1 scenario keeps a passing test within the view where its subject lives

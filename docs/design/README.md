@@ -1,6 +1,6 @@
 # E1b design: chosen direction
 
-**Chosen by the owner (2026-11-24): H, light.** Open `mockups/index.html`; phone screenshots (390 px) are in `mockups/shots/`. Static pages with made-up data and the real E1 labels. System fonts and plain CSS so they open anywhere; the build uses Tailwind, shadcn/ui and one self-hosted font. Dark is a later, separate change: `mockups/h/style.css` already holds the dark tokens (`data-theme="dark"`).
+**Chosen by the owner (2026-11-24): H, light.** Open `mockups/index.html`; phone screenshots (390 px) are in `mockups/shots/`. Static pages with made-up data and the real E1 labels. System fonts and plain CSS so they open anywhere; the build uses Tailwind, shadcn/ui and the same system font stack (a self-hosted font is a later option). Dark is a later, separate change: `mockups/h/style.css` already holds the dark tokens (`data-theme="dark"`).
 
 ## The design
 - **Look:** soft grey page, white rounded cards with a light shadow, one blue accent, small outlined chips ("from your plan", "coach suggestion", intensity), distances in bold.
@@ -13,5 +13,5 @@
 ## Why this one
 Rounds A to E (bold color blocks, a dark neon look, a yellow safety box, a combined-color week strip) were rejected as too loud or too basic. Research that shaped H: running and training apps (Runna, Hevy, Strava) use an icon per workout type, one accent and simple cards or lists; form guidance (single column, grouped sections, fold away optional parts, errors next to the field, a visible primary button). A step-by-step wizard was not built: it adds back and next logic for six answers. Earlier rounds are in this branch's git history.
 
-## Still open (settle when the specs are written)
-The wording of the goal quick-idea chips, the exact accent blue, the font, and whether the summary card stays.
+## Settled in the E1b specs
+Chip wording ("Half marathon", "10K", "Stay fit and balanced", "Get stronger"), accent blue `#2563EB`, system font stack, summary card kept (the owner can remove it later).

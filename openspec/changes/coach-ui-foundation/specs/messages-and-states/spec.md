@@ -29,6 +29,18 @@ A failure SHALL be announced with `role="alert"`, SHALL say what happened and wh
 - **WHEN** the request times out
 - **THEN** the message says the plan may still have been saved and that reloading the page will show it
 
+#### Scenario: A retry is offered where E1 offers one
+- **WHEN** a request fails with `coach_unavailable`, `invalid_coach_response`, `server_error`, a network error or a timeout and calls remain
+- **THEN** "Try again" is offered
+
+#### Scenario: Validation failure shows fields
+- **WHEN** the server answers `validation_error` with field errors
+- **THEN** the message "Some answers need fixing. Check the highlighted fields." is shown, each field shows its own message, and no retry is offered
+
+#### Scenario: No retries remain for an unreadable week
+- **WHEN** the server answers `plan_unreadable` and no calls remain
+- **THEN** "No retries remain today." is shown
+
 #### Scenario: Daily limit
 - **WHEN** the server answers `daily_limit_reached`
 - **THEN** the message contains "Daily limit reached", and no retry is offered

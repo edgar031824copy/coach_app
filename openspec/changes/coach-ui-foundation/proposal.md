@@ -27,8 +27,8 @@ None. Every E1 requirement and scenario stays as written.
 
 ## Impact
 
-`client/` (dependencies, `components.json`, `components/ui/`, restyled screens, rewritten structural tests); `e2e/` (journey updated, new checks); `docs/design-system.md`. The CI clean build and the bundle secret scan must still pass.
+`client/` (dependencies, `components.json`, `components/ui/`, restyled screens, rewritten structural tests); `e2e/` (journey updated, new checks); `docs/design-system.md`; `scripts/bundle-size` and one CI step (harness files). The CI clean build and the bundle secret scan must still pass.
 
 ## Non-goals
 
-New features or endpoints; any server or database change; highlighting today in the week; a router and browser Back (E5); a login (E7); a dark theme (a later change); illustrations or photos; new training advice or copy; animation other than short motion that responds to an action; any change to the E1 scenarios.
+New features or endpoints; any server or database change; highlighting today in the week; a router and browser Back (E5); a login (E7); a dark theme (a later change); illustrations or a logo beyond text; new training advice or copy; animation other than short motion that responds to an action; any change to the E1 scenarios.

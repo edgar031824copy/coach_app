@@ -8,7 +8,7 @@ The plan view SHALL show a summary with the number of running sessions, the numb
 
 #### Scenario: Counts match the plan
 - **WHEN** a plan has 3 running sessions, 5 CrossFit sessions and 1 rest day
-- **THEN** the summary shows 3 runs, 5 CrossFit and 1 rest day
+- **THEN** the summary shows "3 runs", "5 CrossFit" and "1 rest day" (the number, then the singular "run" or "rest day" when it is 1 and "runs" or "rest days" otherwise, and always "CrossFit")
 
 #### Scenario: Two sessions on a day count twice
 - **WHEN** one day has a running and a CrossFit session
@@ -45,15 +45,23 @@ Each session SHALL show its discipline as text ("Running" or "CrossFit"), its de
 - **THEN** the session is labeled "from your plan" and the recommendation "coach suggestion", and the athlete's session text is shown exactly as saved
 
 #### Scenario: Long text is not cut off
-- **WHEN** a session description is 400 characters long
-- **THEN** the whole text is readable in its card at a 360 px wide screen
+- **WHEN** a session description is 400 characters long and the plan is shown at 360 pixels wide
+- **THEN** the whole text is in the page, the card is not wider than the screen, and no part of the text is clipped
 
 ### Requirement: The safety note comes first
 When the plan has a safety note the plan view SHALL show it before the summary and the day cards, as a note with an icon and text, in a style at least as prominent as a day card. When the plan has none, no safety note SHALL be shown.
 
 #### Scenario: Note first
 - **WHEN** the plan has a safety note
-- **THEN** the note precedes the summary and every day card in the page order, has `role="note"`, and its text is at least as large as a day card's text
+- **THEN** the note precedes the summary and every day card in the page order, has `role="note"` and the name "Safety note", shows a warning icon and its text, its text is at least as large as a day card's text, and its text-on-background pair in the tokens has a contrast ratio at least that of the day card's pair
+
+#### Scenario: Only the athlete's sessions
+- **WHEN** a plan has only sessions with `source: "athlete"` and no recommendations
+- **THEN** every session is labeled "from your plan" and no suggestions list is shown
+
+#### Scenario: Suggestions without a pasted plan
+- **WHEN** a plan has recommendations and the saved onboarding has no pasted plan
+- **THEN** the suggestions list "Coach suggestions" is shown with each item labeled "coach suggestion"
 
 #### Scenario: No note without a note
 - **WHEN** the plan's safety note is null

@@ -25,6 +25,14 @@ describe('Button (shadcn setup)', () => {
     expect(classes).toEqual(expect.arrayContaining(['h-11', 'pointer-fine:h-9', 'bg-primary', 'text-primary-foreground']));
   });
 
+  // Blending the accent with the page (hover:bg-primary/90) gave white text about 4.3:1; a token has a listed, tested pair.
+  it('darkens the primary button on hover with the hover token, not by transparency', () => {
+    render(<Button>Build my plan</Button>);
+    const classes = screen.getByRole('button', { name: 'Build my plan' }).className.split(/\s+/);
+    expect(classes).toContain('hover:bg-primary-hover');
+    expect(classes.some((c) => /^hover:bg-primary\/\d+$/.test(c))).toBe(false);
+  });
+
   it('has an outline and a secondary variant on the card and soft surfaces', () => {
     render(<><Button variant="outline">Outline</Button><Button variant="secondary">Secondary</Button></>);
     expect(screen.getByRole('button', { name: 'Outline' }).className).toContain('bg-card');

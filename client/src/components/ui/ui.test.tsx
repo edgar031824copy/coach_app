@@ -82,4 +82,12 @@ describe('Label, Input and Textarea', () => {
     const classes = classesOf(screen.getByRole('textbox', { name: 'A' }));
     expect(classes).toEqual(expect.arrayContaining(['aria-invalid:border-error', 'h-11', 'pointer-fine:h-9']));
   });
+
+  // Tailwind's reset (which sets border-box everywhere) is off, and fields default to content-box: without this class,
+  // w-full plus padding and border overflows the container and the 36 px mouse height becomes 38 px.
+  it('size themselves with border-box so width and height include padding and border', () => {
+    render(<><Input aria-label="A" /><Textarea aria-label="B" /></>);
+    expect(classesOf(screen.getByRole('textbox', { name: 'A' }))).toContain('box-border');
+    expect(classesOf(screen.getByRole('textbox', { name: 'B' }))).toContain('box-border');
+  });
 });

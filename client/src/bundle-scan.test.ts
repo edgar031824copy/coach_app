@@ -28,7 +28,7 @@ const scan = (dir: string) => {
 const CLEAN = { 'index.html': '<div id="root"></div><script src="/assets/index.js"></script>', 'assets/index.js': 'console.log("hello", "/api/plan");' };
 
 describe('scripts/scan-bundle', () => {
-  it('passes a clean build and says how many files it checked @spec(deploy/no-secrets-and-restricted-origin/no-secret-in-the-repo-or-bundle)', () => {
+  it('passes a clean build and says how many files it checked @spec(deploy/no-secrets-and-restricted-origin/no-secret-in-the-repo-or-bundle) @spec(design-system/foundation-stays-small-and-clean/bundle-scan-still-passes)', () => {
     const r = scan(bundle(CLEAN));
     expect(r.status).toBe(0);
     expect(r.out).toMatch(/2 files/);

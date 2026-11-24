@@ -40,7 +40,7 @@ const tokens = readTokens(readFileSync(TOKEN_FILE, 'utf8'));
 
 describe('design tokens', () => {
   it('defines the colors, type scale, spacing and radii the screens use @spec(design-system/tokens-in-one-place/tokens-are-defined)', () => {
-    const colors = ['page', 'card', 'soft', 'fg', 'muted-fg', 'border', 'brand', 'brand-fg', 'run', 'run-soft', 'cf', 'cf-soft', 'alert-bg', 'alert-bd', 'alert-fg', 'error', 'focus'];
+    const colors = ['page', 'card', 'soft', 'fg', 'muted-fg', 'border', 'brand', 'brand-hover', 'brand-fg', 'run', 'run-soft', 'cf', 'cf-soft', 'alert-bg', 'alert-bd', 'alert-fg', 'error', 'focus'];
     for (const name of colors) expect(tokens[name], `color token --${name}`).toMatch(/^#[0-9a-fA-F]{6}$/);
     const css = readFileSync(TOKEN_FILE, 'utf8');
     for (const name of ['text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'radius-sm', 'radius-md', 'radius-lg', 'radius-xl', 'spacing', 'shadow-card'])
@@ -49,9 +49,24 @@ describe('design tokens', () => {
 
   it('maps the tokens into the Tailwind theme so utilities use them @spec(design-system/tokens-in-one-place/tokens-are-defined)', () => {
     const css = readFileSync(TOKEN_FILE, 'utf8');
-    expect(css).toMatch(/@theme\s+inline\s*\{/);
-    expect(css).toMatch(/--color-primary\s*:\s*var\(--brand\)/);
-    expect(css).toMatch(/--color-background\s*:\s*var\(--page\)/);
+    const theme = /@theme\s+inline\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(theme).not.toBe('');
+    const colorMap: Record<string, string> = {};
+    for (const [, name, token] of theme.matchAll(/--color-([a-z-]+)\s*:\s*var\(--([a-z0-9-]+)\)/g)) if (name && token) colorMap[name] = token;
+    // The whole map, so a wrong mapping (say crossfit pointing at the running color) fails.
+    expect(colorMap).toEqual({
+      background: 'page', foreground: 'fg', card: 'card', 'card-foreground': 'fg', popover: 'card', 'popover-foreground': 'fg',
+      primary: 'brand', 'primary-hover': 'brand-hover', 'primary-foreground': 'brand-fg',
+      secondary: 'soft', 'secondary-foreground': 'fg', muted: 'soft', 'muted-foreground': 'muted-fg', accent: 'soft', 'accent-foreground': 'fg',
+      destructive: 'error', border: 'border', input: 'border', ring: 'focus',
+      run: 'run', 'run-soft': 'run-soft', crossfit: 'cf', 'crossfit-soft': 'cf-soft',
+      alert: 'alert-bg', 'alert-border': 'alert-bd', 'alert-foreground': 'alert-fg', error: 'error',
+    });
+    for (const token of Object.values(colorMap)) expect(tokens[token], `--${token} is defined`).toBeDefined();
+  });
+
+  it('has a hover color for the accent that keeps its text readable @spec(responsive-accessibility/contrast-and-signals/token-pairs-meet-contrast)', () => {
+    expect(pairsFile.pairs).toContainEqual(expect.objectContaining({ text: 'brand-fg', background: 'brand-hover', min: 4.5 }));
   });
 
   it('lists every text-on-background pair with its minimum ratio and meets it @spec(responsive-accessibility/contrast-and-signals/token-pairs-meet-contrast)', () => {

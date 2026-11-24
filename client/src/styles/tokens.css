@@ -13,6 +13,7 @@
 
   /* The one accent (primary button, selected day, progress) */
   --brand: #2563eb;
+  --brand-hover: #1d4ed8;
   --brand-fg: #ffffff;
   --focus: #2563eb;
 
@@ -42,6 +43,7 @@
   --color-popover: var(--card);
   --color-popover-foreground: var(--fg);
   --color-primary: var(--brand);
+  --color-primary-hover: var(--brand-hover);
   --color-primary-foreground: var(--brand-fg);
   --color-secondary: var(--soft);
   --color-secondary-foreground: var(--fg);

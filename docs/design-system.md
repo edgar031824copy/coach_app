@@ -25,6 +25,7 @@ All in `client/src/styles/tokens.css`. The first table is the raw values (mockup
 | `--muted-fg` | secondary text, labels | `text-muted-foreground` |
 | `--border` | card and field borders, dividers | `border-border` |
 | `--brand` | the one accent: primary button, selected day, progress | `bg-primary` |
+| `--brand-hover` | the accent while hovered (darker, so white text stays readable) | `hover:bg-primary-hover` |
 | `--brand-fg` | text on the accent | `text-primary-foreground` |
 | `--focus` | focus ring | `outline-ring` |
 | `--run` | running icon | `text-run` |

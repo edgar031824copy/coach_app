@@ -17,21 +17,23 @@ What was looked at (desk research and the repository only; **nothing was install
 
 - **Page structure A: one page, the plan as home once a plan exists, the onboarding form as a step (chosen).** Matches E1 (the app already reads `GET /api/plan` on start) and the running apps above. No router yet.
 - **Page structure B: separate routes now.** Adds a router for two screens; E5 can add routes when it adds screens.
-- **Components A: plain CSS with design tokens, native form controls, no UI library (chosen for E1b).** E1's screens are a form, a list of days and a few messages; native inputs are accessible by default. No new build tooling.
-- **Components B: shadcn/ui (Tailwind) or Mantine.** Worth it when dialogs, menus or toasts appear (E4 and E5); then add Radix or Base UI primitives for those pieces only. Adopting Tailwind for two screens costs more than it returns.
-- **Components C: 21st.dev blocks or its MCP.** Not adopted: paid retrieval, an API key, an unstated license, and marketing blocks fit a coaching app poorly. The owner can still browse it for inspiration.
-- **Visual direction:** one calm, high-contrast look with a single accent color; running and CrossFit told apart by color **and** a text label (never color alone); one type family; the plan reads as a week of day cards with rest days visibly quiet; the "waking up" and error states written in plain language. Two or three short mockups of this direction are made at the start of E1b (HTML, screenshotted with Playwright on a phone and a desktop width) and the owner picks one before the screens are changed.
+- **Components A: shadcn/ui on Tailwind (chosen, owner's call).** shadcn/ui is not an npm library: a CLI copies the component code into the repo, so it is ours to edit. It needs Tailwind CSS (the `@tailwindcss/vite` plugin), an `@` path alias and a `components.json`; components land in `client/src/components/ui/`. It gives accessible primitives for the dialogs, menus and toasts that E4 and E5 will need, and a theme made of CSS variables for the design tokens. Cost: Tailwind and a few dependencies for the client, and a one-time setup in a workspace (the client's Vite config already aliases `shared`).
+- **Components B: plain CSS with tokens and native controls.** Fewer dependencies, but every later widget is built by hand, and an energetic, bold look is much more work without a toolkit.
+- **Components C: Mantine.** Batteries included, but its own look is harder to push toward a custom direction, and one audit found extra accessibility work.
+- **Components D: 21st.dev blocks or its MCP.** Used as a **gallery for inspiration**, not as a dependency: browsing is free, copying a block is limited to 2 a day on the free tier, fetching through the MCP is paid and needs an API key, its pages state no license (check each block before copying), and whether the project's context is sent is not stated. Blocks are React, Tailwind and shadcn, so a chosen idea can be rebuilt from shadcn primitives. The MCP is not installed.
+- **Visual direction (owner: energetic and bold):** a high-contrast, high-energy look with one strong accent color, large type for the day and the session, and confident use of color; running and CrossFit told apart by color **and** a text label (never color alone); one type family; the plan reads as a week of day cards with rest days visibly quiet; the "waking up" and error states written in plain language. Two or three short mockups of this direction are made at the start of E1b (HTML, screenshotted with Playwright on a phone and a desktop width) and the owner picks one before the screens are changed.
 
 ## Decision
 
-Build E1b on one page with the plan as the home screen, native form controls, and a small design system of CSS tokens and a few components, designed with the `frontend-design` skill and reviewed with the design critique, accessibility review and UX copy skills. Do not add a component library or 21st.dev now; revisit when E4 or E5 needs dialogs or menus. The visual direction is chosen from mockups at the start of E1b.
+Build E1b on one page with the plan as the home screen, using shadcn/ui on Tailwind CSS with a small design system of CSS-variable tokens, designed with the `frontend-design` skill and reviewed with the design critique, accessibility review and UX copy skills. The direction is energetic and bold. Use 21st.dev as a gallery for ideas only. The visual direction is chosen from mockups at the start of E1b.
 
 ## Consequences
 
-- E1b stays small and adds no dependency. Later epics reuse the tokens and components, which are documented in the repo.
+- E1b adds Tailwind and shadcn/ui to `client/` (the setup is its first task, with the bundle scan and the client tests still passing). Later epics reuse the tokens and components, which are documented in the repo, and get accessible dialogs and menus without extra work.
+- Energetic and bold is easy to overdo: the mockups must keep the accessibility floor (contrast, focus, text labels next to color) and the plain wording of messages.
 - A single page means no deep links to a view; add routes when E5 needs them.
 - The research is desk-based and some apps were not covered; the mockups are where the owner's own taste decides, before any screen changes.
-- Revisit if a screen needs complex widgets, or if the owner prefers a library after seeing the mockups.
+- Revisit if the Tailwind setup fights the existing build (workspaces, the shared alias, the secret scan of the bundle) or the owner dislikes the mockups.
 
 ## Sources
 
@@ -41,4 +43,5 @@ Build E1b on one page with the plan as the home screen, native form controls, an
 - [Garmin forum, mobile calendar request](https://forums.garmin.com/developer/connect-iq/f/discussion/437475/garmin-connect-mobile-calendar-needs-better-overview-simple-notes)
 - [21st.dev](https://21st.dev) · [21st.dev MCP guide](https://21st.dev/mcp.md)
 - [anthropics/skills, frontend-design](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md)
+- [shadcn/ui, Vite installation](https://ui.shadcn.com/docs/installation/vite)
 - [shadcn/ui vs Radix vs Base UI comparison](https://dev.to/jake_kim_bd3065a6816799db/shadcnui-vs-radix-ui-vs-base-ui-2026-the-complete-react-component-library-comparison-p0m)

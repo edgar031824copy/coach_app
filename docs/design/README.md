@@ -13,3 +13,12 @@ Three static directions for the E1 screens (epic brief `docs/epics/E1b-ui-founda
 Text contrast of the token pairs (WCAG 2.1 AA needs 4.5 for text), computed from the hex values: A 5.3 to 18.8; B 5.7 to 19.2; C 5.1 to 21.0. All pass. Color is never the only signal: every session carries the text label "Running" or "CrossFit". No animation is used. Known weaknesses of the mockups: on desktop A's two-column grid leaves a tall empty card next to a long one; the saved-plan-read failure and an empty state are not shown.
 
 Not decided here: the font (system stack in the mockups), the exact accent after the owner picks, and anything beyond the screens in E1.
+
+## Round 2 (owner feedback on round 1)
+
+The owner rejected A, B and C: too loud, the yellow safety box, the combined-color week strip and the oversized pills. Asked for something simpler and modern. Round 1 is kept for the record.
+
+- **D (light) and E (dark): clean, shadcn-style.** One column, a plain list of days separated by thin lines instead of cards, a segmented "My plan | New plan" switch at the top, a single blue accent for actions, running and CrossFit shown by a small colored dot plus the text label, outlined small chips ("from your plan", "coach suggestion", intensity), distances in bold. Reference points: the sparse white interface of Hevy and similar training apps, and the shadcn/ui default look the build will use. Marketing pages of Runna, Hevy and WHOOP were looked at; they show little of their apps' own screens, so this is a judgment, not a measured comparison.
+- **The safety note** appears only when the plan has one (a pain report). It is a rose-toned alert with an icon, no yellow; `plan.html` shows the normal plan and `plan-pain.html` the one with the note.
+- No week strip and no split colors: a day with two sessions simply lists both.
+- Contrast (computed from the hex values, 4.5 needed for text): light, body text 17.7, muted text 7.7, button text 5.2, CrossFit label 5.2, alert text 8.7; dark, body text 19.1, muted text 7.8, button text 7.8, alert text 14.8, CrossFit label 8.8. Touch targets are 44 px.

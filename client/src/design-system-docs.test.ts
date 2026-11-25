@@ -1,0 +1,47 @@
+// @vitest-environment node
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SRC = fileURLToPath(new URL('.', import.meta.url));
+const DOC = readFileSync(fileURLToPath(new URL('../../docs/design-system.md', import.meta.url)), 'utf8');
+const UI = join(SRC, 'components', 'ui');
+const isSource = (name: string) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name);
+
+// Task 1.3: the design system document stays in step with the code.
+describe('docs/design-system.md', () => {
+  it('names every component file in components/ui @spec(design-system/documented-components/every-component-is-documented)', () => {
+    const files = readdirSync(UI).filter(isSource);
+    expect(files.length).toBeGreaterThanOrEqual(7); // button, card, badge, alert, input, textarea, label
+    for (const file of files) expect(DOC, file).toContain(`\`${file}\``);
+  });
+
+  it('names the icons file and each icon', () => {
+    expect(DOC).toContain('`icons.tsx`');
+    for (const icon of ['RouteIcon', 'BarbellIcon', 'MoonIcon', 'WarningIcon']) expect(DOC, icon).toContain(icon);
+  });
+
+  it('lists every color token', () => {
+    const css = readFileSync(join(SRC, 'styles', 'tokens.css'), 'utf8');
+    const root = /:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    const names = [...root.matchAll(/--([a-z0-9-]+)\s*:/g)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(10);
+    for (const name of names) expect(DOC, `--${name}`).toContain(`\`--${name}\``);
+  });
+});
+
+// "Styled with tokens only": a Tailwind palette color (bg-blue-500, text-white) would sidestep the token file.
+const PALETTE = /\b(?:bg|text|border|ring|outline|fill|stroke|from|to|via|shadow|divide|decoration)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})\b/;
+describe('components/ui', () => {
+  it('detects a palette color class and ignores token classes @spec(design-system/tokens-in-one-place/no-raw-colors-in-the-screens)', () => {
+    expect(PALETTE.test('rounded-md bg-blue-500')).toBe(true);
+    expect(PALETTE.test('text-white')).toBe(true);
+    expect(PALETTE.test('bg-primary text-muted-foreground border-alert-border shadow-card')).toBe(false);
+  });
+
+  it('uses token classes only, no Tailwind palette colors @spec(design-system/tokens-in-one-place/no-raw-colors-in-the-screens)', () => {
+    const offenders = readdirSync(UI).filter(isSource).filter((f) => PALETTE.test(readFileSync(join(UI, f), 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+});

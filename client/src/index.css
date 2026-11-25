@@ -1,0 +1,5 @@
+/* Tailwind without its global reset (preflight) for now: the current screens keep their look until the views are
+   rebuilt in the next task groups. */
+@import "tailwindcss/theme";
+@import "tailwindcss/utilities";
+@import "./styles/tokens.css";

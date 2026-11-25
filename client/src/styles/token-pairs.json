@@ -1,0 +1,21 @@
+{
+  "note": "Every text-on-background pair the tokens define. `text` and `background` are token names from tokens.css; `min` is 4.5 for text and 3 for large text and interface parts (icons, the focus ring). tokens.test.ts computes each ratio.",
+  "pairs": [
+    { "text": "fg", "background": "page", "min": 4.5, "use": "body text on the page" },
+    { "text": "fg", "background": "card", "min": 4.5, "use": "text on a card" },
+    { "text": "fg", "background": "soft", "min": 4.5, "use": "text on a soft surface (segmented control, chips)" },
+    { "text": "muted-fg", "background": "page", "min": 4.5, "use": "secondary text on the page" },
+    { "text": "muted-fg", "background": "card", "min": 4.5, "use": "secondary text on a card" },
+    { "text": "muted-fg", "background": "soft", "min": 4.5, "use": "secondary text on a soft surface (rest day icon, notes)" },
+    { "text": "brand-fg", "background": "brand", "min": 4.5, "use": "text on the primary button and a selected day" },
+    { "text": "brand-fg", "background": "brand-hover", "min": 4.5, "use": "text on the primary button while hovered" },
+    { "text": "brand", "background": "card", "min": 4.5, "use": "accent colored text and links on a card" },
+    { "text": "run", "background": "run-soft", "min": 3, "use": "running icon on its tile" },
+    { "text": "cf", "background": "cf-soft", "min": 3, "use": "CrossFit icon on its tile" },
+    { "text": "alert-fg", "background": "alert-bg", "min": 4.5, "use": "safety note and failure notice text" },
+    { "text": "error", "background": "card", "min": 4.5, "use": "field error text on a card" },
+    { "text": "error", "background": "page", "min": 4.5, "use": "field error text on the page" },
+    { "text": "focus", "background": "page", "min": 3, "use": "focus ring on the page" },
+    { "text": "focus", "background": "card", "min": 3, "use": "focus ring on a card" }
+  ]
+}

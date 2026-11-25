@@ -32,4 +32,14 @@ describe('page styles', () => {
     expect(match, 'html { scroll-padding-bottom: calc(N rem + env(safe-area-inset-bottom)) } is missing').not.toBeNull();
     expect(Number(match?.[1])).toBeGreaterThanOrEqual(5);
   });
+
+  // Components use transition-colors; with reduced motion asked for, nothing may animate or transition (checked in a real
+  // browser by the Playwright reduced-motion test).
+  it('turns off every animation and transition when the visitor asks for reduced motion', () => {
+    const block = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([^}]*\{[^}]*\}[^}]*)\}/.exec(read('index.css'));
+    expect(block, 'a prefers-reduced-motion block is missing').not.toBeNull();
+    expect(block?.[1]).toMatch(/animation(-duration)?:\s*(none|0s)/);
+    expect(block?.[1]).toMatch(/transition(-duration)?:\s*(none|0s)/);
+    expect(block?.[1]).toMatch(/\*/);
+  });
 });

@@ -45,7 +45,11 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   await page.getByRole('button', { name: 'Plan next week' }).click();
   await expect(page.getByLabel('Goal')).toHaveValue('Finish a 10k');
   await expect(page.getByLabel(/Week of your plan/)).toHaveValue('2');
-  await expect(plan(page)).toContainText('Week 1 of your running plan'); // the saved plan is still the one shown
+  await expect(plan(page)).toHaveCount(0); // the form view is open; the saved plan is one press away
+  await page.getByRole('button', { name: 'My plan', exact: true }).click();
+  await expect(plan(page)).toContainText('Week 1 of your running plan'); // still the saved plan
+  await page.getByRole('button', { name: 'Plan next week' }).click();
+  await expect(page.getByLabel(/Week of your plan/)).toHaveValue('2');
   expect(await counts()).toEqual({ plans: 1, calls: 1 });
 
   // Submitting it is one normal call: validated, counted toward the cap, answered by the coach, saved.
@@ -75,7 +79,8 @@ test('after the daily limit the client says so, with no retry, and nothing more 
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('Daily limit reached');
   await expect(alert.getByRole('button', { name: 'Try again' })).toHaveCount(0);
-  await expect(plan(page)).toContainText('Week 3 of your running plan'); // the last plan stays on screen
+  await page.getByRole('button', { name: 'My plan', exact: true }).click();
+  await expect(plan(page)).toContainText('Week 3 of your running plan'); // the last plan stays reachable
   expect(await counts()).toEqual({ plans: 3, calls: 3 }); // the refused request used no call and saved nothing
 });
 

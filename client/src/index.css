@@ -8,3 +8,6 @@
 /* Light only, on the page color: the tokens assume --fg on --page, so a dark OS must not repaint the canvas. */
 :root { color-scheme: light; }
 body { background: var(--page); color: var(--fg); }
+
+/* The pinned action bar (about 4.5 rem tall) covers the bottom of the screen; keep a focused field clear of it. */
+html { scroll-padding-bottom: 6rem; }

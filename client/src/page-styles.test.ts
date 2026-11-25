@@ -24,4 +24,11 @@ describe('page styles', () => {
     expect(css).toMatch(/body\s*\{[^}]*background:\s*var\(--page\)[^}]*\}/);
     expect(css).toMatch(/body\s*\{[^}]*color:\s*var\(--fg\)[^}]*\}/);
   });
+
+  // The pinned action bar is about 4.5 rem tall; without this a field focused near the bottom scrolls in underneath it.
+  it('keeps a focused field clear of the pinned action bar', () => {
+    const match = /html\s*\{[^}]*scroll-padding-bottom:\s*(\d+(?:\.\d+)?)rem/.exec(read('index.css'));
+    expect(match, 'html { scroll-padding-bottom } is missing').not.toBeNull();
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(5);
+  });
 });

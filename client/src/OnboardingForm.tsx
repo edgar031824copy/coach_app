@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
+const IDEAS = ['Half marathon', '10K', 'Stay fit and balanced', 'Get stronger'];
 const LEVELS = [{ id: 'beginner', label: 'Beginner' }, { id: 'intermediate', label: 'Intermediate' }, { id: 'advanced', label: 'Advanced' }];
 const DAYS: { id: Day; label: string }[] = [
   { id: 'mon', label: 'Mon' }, { id: 'tue', label: 'Tue' }, { id: 'wed', label: 'Wed' }, { id: 'thu', label: 'Thu' },
@@ -42,13 +43,15 @@ const FOCUS_ID: Record<Key, string> = {
   existingRunningPlan: 'f-existingRunningPlan', pastedPlanWeek: 'f-pastedPlanWeek', weeklyTraining: 'f-runningSessions', targetEvent: 'f-eventName',
 };
 // The field names this form has a place for; a server error for any other name has no field to focus.
+// The optional part that holds each field, so an error inside a closed part can open it.
+const PART_OF_KEY: Partial<Record<Key, 'plan' | 'week' | 'event'>> = { existingRunningPlan: 'plan', pastedPlanWeek: 'plan', weeklyTraining: 'week', targetEvent: 'event' };
 export const FORM_FIELD_KEYS: ReadonlySet<string> = new Set(PAGE_ORDER);
 
 // Focuses the first field, in page order, whose key is in `keys`. Returns whether one took focus.
-function focusFirstField(keys: ReadonlySet<string>): boolean {
+function focusFirstField(keys: ReadonlySet<string>, idFor: (key: Key) => string = (key) => FOCUS_ID[key]): boolean {
   for (const key of PAGE_ORDER) {
     if (!keys.has(key)) continue;
-    const el = document.getElementById(FOCUS_ID[key]);
+    const el = document.getElementById(idFor(key));
     const target = el instanceof HTMLFieldSetElement ? el.querySelector('input') : el;
     if (target instanceof HTMLElement) { target.focus(); return true; }
   }
@@ -119,14 +122,31 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
     };
   });
   // Focus is moved only to a field with an error the athlete has not seen yet; otherwise the view's heading gets it (App).
+  // A closed optional part that holds such a field is opened first, and the focus follows once it is open.
+  const [focusRequest, setFocusRequest] = useState<{ keys: ReadonlySet<string> } | null>(null);
+  const reveal = (keys: ReadonlySet<string>) => {
+    setOpen((o) => {
+      const next = { ...o };
+      for (const key of keys) { const id = PART_OF_KEY[key as Key]; if (id) next[id] = true; }
+      return next;
+    });
+    setFocusRequest({ keys });
+  };
+  // A group with one message (the event, the usual week) focuses the field that needs the athlete: the first one left blank.
+  const focusIdFor = (key: Key): string => {
+    if (key === 'targetEvent') return blank(values.eventName) ? 'f-eventName' : 'f-eventDate';
+    if (key === 'weeklyTraining') return blank(values.runningSessions) ? 'f-runningSessions' : blank(values.crossfitSessions) ? 'f-crossfitSessions' : 'f-runningKm';
+    return FOCUS_ID[key];
+  };
+  useEffect(() => { if (focusRequest) focusFirstField(focusRequest.keys, focusIdFor); }, [focusRequest]);
   useEffect(() => {
     setEdited(new Set());
-    if (serverFields !== NO_FIELDS) focusFirstField(new Set(Object.keys(serverFields)));
+    if (serverFields !== NO_FIELDS) reveal(new Set(Object.keys(serverFields)));
   }, [serverFields]);
   useEffect(() => {
     if (!initial) return;
     const checked = validateOnboarding(toInput(toValues(initial)));
-    if (!checked.ok) focusFirstField(new Set(Object.keys(checked.fields)));
+    if (!checked.ok) reveal(new Set(Object.keys(checked.fields)));
   }, [initial]);
 
   const result = validateOnboarding(toInput(values));
@@ -135,6 +155,8 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
     if (submitted || touched.has(key)) if (own[key]) return own[key];
     return edited.has(key) ? undefined : serverFields[key];
   };
+  // The four required answers, by the validator's own verdict: goal, both levels, and a training day or a pasted plan.
+  const answersDone = [!own.goal, !own.runningLevel, !own.crossfitLevel, !(own.runningDays || own.crossfitDays)].filter(Boolean).length;
   const placed = new Set<string>(Object.values(KEY_OF));
   const unplaced = Object.entries(serverFields).filter(([k]) => !placed.has(k)); // fields this form has no place for (shown, never hidden)
 
@@ -253,9 +275,30 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
         e.preventDefault();
         setSubmitted(true);
         if (result.ok) onSubmit(result.value);
+        else reveal(new Set(Object.keys(result.fields))); // open any folded part with a problem, then focus the first one
       }}
     >
-      {section('sec-goal', 'Your goal', 'What do you want to achieve?', text('goal', 'Goal', { multiline: true }))}
+      <div className="grid gap-2">
+        <p className="m-0 text-sm font-semibold text-muted-foreground">{answersDone} of 4 required answers done</p>
+        <div role="presentation" className="h-1.5 overflow-hidden rounded-full bg-border">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${answersDone * 25}%` }} />
+        </div>
+      </div>
+      {section('sec-goal', 'Your goal', 'What do you want to achieve?', <>
+        {text('goal', 'Goal', { multiline: true })}
+        {blank(values.goal) && (
+          <div role="group" aria-label="Quick ideas" className="flex flex-wrap gap-2">
+            {IDEAS.map((idea) => (
+              <Button
+                key={idea} type="button" variant="secondary" className="rounded-full px-3 text-sm"
+                onClick={() => { change('goal', idea); document.getElementById('f-goal')?.focus(); }}
+              >
+                {idea}
+              </Button>
+            ))}
+          </div>
+        )}
+      </>)}
       {section('sec-level', 'Your level', 'Be honest, it sets how hard the plan is.', <>
         {level('runningLevel', 'Running level')}
         {level('crossfitLevel', 'CrossFit level')}
@@ -283,7 +326,10 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
         {eventError && errorLine('f-targetEvent-error', eventError)}
       </fieldset>)}
       {unplaced.map(([k, m]) => errorLine(`f-${k}-error`, m))}
-      <Button type="submit" disabled={busy} className="w-full">Build my plan</Button>
+      {/* Pinned to the bottom of the screen while the form scrolls; it is in the page flow, so it never covers a field. */}
+      <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-background/90 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
+        <Button type="submit" disabled={busy} className="w-full">Build my plan</Button>
+      </div>
     </form>
   );
 }

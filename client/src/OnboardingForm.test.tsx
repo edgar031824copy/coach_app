@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OnboardingForm } from './OnboardingForm.js';
+import { validateOnboarding, type Onboarding } from 'shared';
 import { onboarding as base } from './test-helpers.js';
 
 const setup = (props: Partial<Parameters<typeof OnboardingForm>[0]> = {}) => {
@@ -370,5 +371,182 @@ describe('OnboardingForm: day buttons', () => {
     await user.click(submitButton());
     expect(screen.getAllByText('Pick at least one training day, or paste a running plan.')).toHaveLength(2);
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// Task 3.2: quick goal ideas, the progress cue, the pinned action bar, and folded parts that hold an error.
+describe('OnboardingForm: quick goal ideas', () => {
+  const IDEAS = ['Half marathon', '10K', 'Stay fit and balanced', 'Get stronger'];
+  const ideas = () => within(screen.getByRole('group', { name: 'Quick ideas' }));
+
+  it('offers four short ideas while the goal is empty, and fills the goal when one is pressed @spec(form-presentation/quick-goal-ideas/an-idea-fills-the-goal)', async () => {
+    const { user } = setup();
+    expect(ideas().getAllByRole('button').map((b) => b.textContent)).toEqual(IDEAS);
+    await user.click(ideas().getByRole('button', { name: '10K' }));
+    expect((screen.getByLabelText('Goal') as HTMLTextAreaElement).value).toBe('10K');
+    expect(screen.queryByRole('group', { name: 'Quick ideas' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Goal')); // ready to edit the idea
+  });
+
+  it('lets the athlete edit the idea they pressed', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await user.clear(screen.getByLabelText('Goal'));
+    await user.click(ideas().getByRole('button', { name: 'Half marathon' }));
+    await user.type(screen.getByLabelText('Goal'), ' in under two hours');
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ goal: 'Half marathon in under two hours' }));
+  });
+
+  it('shows no idea once the goal has text, so a typed goal can never be replaced @spec(form-presentation/quick-goal-ideas/typed-goals-are-never-replaced)', async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'Get faster');
+    expect(screen.queryByRole('group', { name: 'Quick ideas' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '10K' })).toBeNull();
+  });
+
+  it('shows no idea on a form pre-filled with a goal @spec(form-presentation/quick-goal-ideas/typed-goals-are-never-replaced)', () => {
+    setup({ initial: { ...base, runningDays: ['mon'] } });
+    expect(screen.queryByRole('group', { name: 'Quick ideas' })).toBeNull();
+  });
+
+  it('brings the ideas back when the goal is emptied again', async () => {
+    const { user } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'x');
+    await user.clear(screen.getByLabelText('Goal'));
+    expect(screen.getByRole('group', { name: 'Quick ideas' })).toBeTruthy();
+  });
+});
+
+describe('OnboardingForm: progress cue', () => {
+  const cue = () => screen.getByText(/of 4 required answers done/).textContent;
+  const PASTE = 'Mon 5 km easy';
+  // Each row is an onboarding and the number of required answers it has: goal, running level, CrossFit level, and a
+  // training day or a pasted plan. The cue must agree with this table and with the shared validator on every row.
+  const rows: { name: string; change: Partial<Onboarding>; done: number }[] = [
+    { name: 'nothing', change: { goal: '', runningLevel: '' as never, crossfitLevel: '' as never, runningDays: [], crossfitDays: [] }, done: 0 },
+    { name: 'goal and running level', change: { goal: 'Run', runningLevel: 'beginner', crossfitLevel: '' as never, runningDays: [], crossfitDays: [] }, done: 2 },
+    { name: 'a running day only', change: { goal: '', runningLevel: '' as never, crossfitLevel: '' as never, runningDays: ['mon'], crossfitDays: [] }, done: 1 },
+    { name: 'a CrossFit day only', change: { goal: '', runningLevel: '' as never, crossfitLevel: '' as never, runningDays: [], crossfitDays: ['tue'] }, done: 1 },
+    { name: 'goal, both levels, a pasted plan and no day', change: { goal: 'Run', runningLevel: 'beginner', crossfitLevel: 'advanced', runningDays: [], crossfitDays: [], existingRunningPlan: PASTE, pastedPlanWeek: 1 }, done: 4 },
+    { name: 'a blank pasted plan does not count', change: { goal: 'Run', runningLevel: 'beginner', crossfitLevel: 'advanced', runningDays: [], crossfitDays: [], existingRunningPlan: '   ' }, done: 3 },
+    { name: 'everything', change: { goal: 'Run', runningLevel: 'beginner', crossfitLevel: 'advanced', runningDays: ['mon'], crossfitDays: ['tue'] }, done: 4 },
+  ];
+
+  it.each(rows)('reads "$done of 4 required answers done" for $name, as the shared validator says @spec(form-presentation/progress-cue/cue-counts-answers) @spec(form-presentation/progress-cue/a-pasted-plan-counts-as-the-training-day-answer)', ({ change, done }) => {
+    const onboarding = { ...base, weeklyTraining: null, targetEvent: null, ...change } as Onboarding;
+    setup({ initial: onboarding });
+    expect(cue()).toBe(`${done} of 4 required answers done`);
+    // Cross-check with the validator the form submits through: the required keys without an error are the answers done.
+    const result = validateOnboarding({ ...onboarding, existingRunningPlan: onboarding.existingRunningPlan?.trim() ? onboarding.existingRunningPlan : null });
+    const failing = result.ok ? new Set<string>() : new Set(Object.keys(result.fields));
+    const requiredOk = ['goal', 'runningLevel', 'crossfitLevel'].filter((k) => !failing.has(k)).length + (failing.has('runningDays') || failing.has('crossfitDays') ? 0 : 1);
+    expect(requiredOk).toBe(done);
+  });
+
+  it('counts up as the athlete answers, starting from 0 on an empty form', async () => {
+    const { user } = setup();
+    expect(cue()).toBe('0 of 4 required answers done');
+    await user.type(screen.getByLabelText('Goal'), 'Run');
+    expect(cue()).toBe('1 of 4 required answers done');
+    await user.click(level('Running level', 'Beginner'));
+    await user.click(level('CrossFit level', 'Beginner'));
+    expect(cue()).toBe('3 of 4 required answers done');
+    await user.click(day('CrossFit days', 'Tue'));
+    expect(cue()).toBe('4 of 4 required answers done');
+  });
+
+  it('is plain text read with the form, not announced on every change', () => {
+    setup();
+    const el = screen.getByText(/of 4 required answers done/);
+    expect(el.closest('[aria-live], [role="status"], [role="alert"]')).toBeNull();
+  });
+
+  it('never blocks submitting: with fewer than four answers the E1 messages show and nothing is sent @spec(form-presentation/progress-cue/cue-never-blocks)', async () => {
+    const { user, onSubmit } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'Run');
+    expect((submitButton() as HTMLButtonElement).disabled).toBe(false);
+    await user.click(submitButton());
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText('Choose your running level.')).toBeTruthy();
+    expect(cue()).toBe('1 of 4 required answers done');
+  });
+
+  it('does not enable submitting by itself: four answers still need to pass the validator', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    expect(cue()).toBe('4 of 4 required answers done');
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('OnboardingForm: pinned action bar', () => {
+  it('keeps "Build my plan" in a sticky bar at the bottom, with the safe-area inset', () => {
+    setup();
+    const bar = submitButton().parentElement as HTMLElement;
+    const classes = bar.className.split(/\s+/);
+    expect(classes).toEqual(expect.arrayContaining(['sticky', 'bottom-0']));
+    expect(bar.className).toContain('env(safe-area-inset-bottom)');
+  });
+});
+
+describe('OnboardingForm: a folded part with an error is never hidden', () => {
+  const eventPart = () => part(EVENT_PART);
+
+  it('opens "Target event" and focuses the date when a past date is submitted from a closed part @spec(form-presentation/sections-and-folded-optional-parts/an-error-inside-a-folded-part-is-never-hidden)', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await openPart(user, EVENT_PART);
+    await user.type(screen.getByLabelText(/event name/i), 'City Half');
+    await user.type(screen.getByLabelText(/event date/i), '2020-01-01');
+    await user.click(screen.getByText(EVENT_PART, { selector: 'summary' })); // close it
+    expect(eventPart().open).toBe(false);
+    await user.click(submitButton());
+    expect(eventPart().open).toBe(true);
+    expect(within(eventPart()).getByText('The event date cannot be in the past (UTC).')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText(/event date/i));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('opens "My usual week" for a weekly number problem and "I already follow a running plan" for a bad week', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await openPart(user, WEEK_PART);
+    await user.type(screen.getByLabelText(/running sessions per week/i), '3'); // CrossFit count missing
+    await user.click(screen.getByText(WEEK_PART, { selector: 'summary' }));
+    await openPart(user, PLAN_PART);
+    await user.type(screen.getByLabelText(/running plan/i), 'Mon 5 km easy');
+    await user.type(screen.getByLabelText(/week of your plan/i), '99');
+    await user.click(screen.getByText(PLAN_PART, { selector: 'summary' }));
+    await user.click(submitButton());
+    expect(part(WEEK_PART).open).toBe(true);
+    expect(part(PLAN_PART).open).toBe(true);
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i)); // the plan part comes first on the page
+  });
+
+  it('focuses the weekly field that was left blank, not always the first one', async () => {
+    const { user } = setup();
+    await fillValid(user);
+    await openPart(user, WEEK_PART);
+    await user.type(screen.getByLabelText(/running sessions per week/i), '3'); // CrossFit sessions left blank
+    await user.click(screen.getByText(WEEK_PART, { selector: 'summary' }));
+    await user.click(submitButton());
+    expect(part(WEEK_PART).open).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText(/crossfit sessions per week/i));
+  });
+
+  it('opens a closed part that a server error names, and focuses its field', () => {
+    setup({ serverFields: { targetEvent: 'The event date cannot be in the past (UTC).' } });
+    expect(eventPart().open).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText(/event name/i));
+  });
+
+  it('keeps a part closed when it has no error', async () => {
+    const { user } = setup();
+    await fillValid(user);
+    await user.click(submitButton());
+    for (const title of [PLAN_PART, WEEK_PART, EVENT_PART]) expect(part(title).open, title).toBe(false);
   });
 });

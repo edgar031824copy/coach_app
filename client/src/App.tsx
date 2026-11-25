@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type Ref } from 'react';
 import { validateOnboarding, type Onboarding, type PlanRecord } from 'shared';
 import { createApi, type Api, type ApiFailure } from './api.js';
 import { describeFailure } from './failure-message.js';
+import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { WarningIcon } from '@/components/icons';
 import { FORM_FIELD_KEYS, OnboardingForm } from './OnboardingForm.js';
 import { PlanView } from './PlanView.js';
 import { nextWeekSeed } from './seed.js';
@@ -13,15 +15,25 @@ const defaultApi = createApi({ baseUrl: import.meta.env.VITE_API_URL ?? '' });
 
 type Saved = { status: 'loading' } | { status: 'ready'; record: PlanRecord | null } | { status: 'failed' };
 
+// A failure: announced as an alert, in words, with "Try again" only where E1 offers it. It takes focus after a failed
+// submit when the server named no field of the form, hence the ref and tabIndex.
 function FailureNotice({ failure, onRetry, noticeRef }: { failure: ApiFailure; onRetry: () => void; noticeRef: Ref<HTMLDivElement> }) {
   const { message, canRetry, limitNote } = describeFailure(failure);
   return (
-    <div role="alert" className="notice" ref={noticeRef} tabIndex={-1}>
-      <p>{message}</p>
-      {limitNote && <p>{limitNote}</p>}
-      {canRetry && <button type="button" onClick={onRetry}>Try again</button>}
-    </div>
+    <Alert variant="danger" role="alert" ref={noticeRef} tabIndex={-1} className="mt-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+      <WarningIcon aria-hidden="true" />
+      <div className="grid min-w-0 gap-2">
+        <p className="break-words">{message}</p>
+        {limitNote && <p className="font-semibold">{limitNote}</p>}
+        {canRetry && <Button type="button" className="justify-self-start" onClick={onRetry}>Try again</Button>}
+      </div>
+    </Alert>
   );
+}
+
+// Progress text: announced politely, on the soft surface.
+function Status({ children }: { children: string }) {
+  return <Alert role="status" className="mt-4">{children}</Alert>;
 }
 
 // One page with two views (design.md Decision 3): the plan view and the form view, plus a start state while the saved
@@ -92,7 +104,7 @@ export function App({ api = defaultApi }: { api?: Api }) {
   return (
     <main>
       <h1>Hybrid Coach</h1>
-      {starting && <p role="status">Loading your saved plan…</p>}
+      {starting && <Status>Loading your saved plan…</Status>}
       {planView && (
         <>
           <PlanView record={shown} headingRef={planHeading} />
@@ -106,10 +118,10 @@ export function App({ api = defaultApi }: { api?: Api }) {
         <>
           <h2 ref={formHeading} tabIndex={-1}>New plan</h2>
           {shown && <button type="button" onClick={() => go('plan')} disabled={busy}>My plan</button>}
-          {saved.status === 'failed' && readNoteWanted && <p className="notice">Could not load your saved plan. You can still build a new one.</p>}
+          {saved.status === 'failed' && readNoteWanted && <Alert className="mt-4">Could not load your saved plan. You can still build a new one.</Alert>}
           <OnboardingForm key={seed?.n ?? 0} initial={seed?.onboarding} onSubmit={(o) => void send(o)} busy={busy} serverFields={serverFields} />
-          {state.phase === 'loading' && <p role="status">Building your plan…</p>}
-          {state.phase === 'waking' && <p role="status">Waking up the coach. The first request after a quiet period can take up to a minute.</p>}
+          {state.phase === 'loading' && <Status>Building your plan…</Status>}
+          {state.phase === 'waking' && <Status>Waking up the coach. The first request after a quiet period can take up to a minute.</Status>}
           {failure && <FailureNotice failure={failure} noticeRef={failureNotice} onRetry={() => lastSent.current && void send(lastSent.current)} />}
         </>
       )}

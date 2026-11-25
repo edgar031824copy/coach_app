@@ -72,3 +72,24 @@ describe('describeFailure', () => {
     expect(message).toMatch(/reload/i); // and says how to find out
   });
 });
+
+describe('describeFailure: wording', () => {
+  const all: ApiFailure[] = [
+    { kind: 'network' }, { kind: 'timeout' },
+    ...(['validation_error', 'daily_limit_reached', 'plan_unreadable', 'coach_unavailable', 'invalid_coach_response', 'server_error'] as const).map((code) => api(code, { remainingCallsToday: 5, message: 'No running sessions found for week 2 in your pasted plan.' })),
+  ];
+
+  it('says what happened in plain sentence-case words, without an apology or an exclamation', () => {
+    for (const failure of all) {
+      const { message } = describeFailure(failure);
+      expect(message, message).toMatch(/^[A-Z]/);
+      expect(message, message).not.toMatch(/sorry|apolog|oops|unfortunately|!/i);
+    }
+  });
+
+  it('tells the athlete to reload the page after a timeout, since the plan may be saved @spec(messages-and-states/failures/timeout-keeps-its-hint)', () => {
+    const { message } = describeFailure({ kind: 'timeout' });
+    expect(message).toMatch(/may still have been saved/i);
+    expect(message).toMatch(/reload the page/i);
+  });
+});

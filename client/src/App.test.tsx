@@ -110,7 +110,7 @@ describe('App: submitting', () => {
     expect(await screen.findByText('A brand new suggestion.')).toBeTruthy();
   });
 
-  it('shows what the server said is wrong next to the fields', async () => {
+  it('shows what the server said is wrong next to the fields @spec(messages-and-states/failures/validation-failure-shows-fields)', async () => {
     const { user } = await open(pastedRecord, async () => apiFail('validation_error', { fields: { goal: 'Goal is required from the server.' } }));
     await user.click(nextWeek());
     await user.click(build());
@@ -127,7 +127,7 @@ describe('App: errors keep the saved plan, and each has its own message', () => 
     return { ...r, alert: await screen.findByRole('alert') };
   };
 
-  it('offers a retry after coach_unavailable, and the retry sends the same onboarding again', async () => {
+  it('offers a retry after coach_unavailable, and the retry sends the same onboarding again @spec(messages-and-states/failures/alert-role) @spec(messages-and-states/failures/a-retry-is-offered-where-e1-offers-one)', async () => {
     const { api, user, alert } = await fail(async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
     expect(alert.textContent).toMatch(/nothing was saved/i);
     expect(screen.queryByRole('region', { name: 'Your plan' })).toBeNull(); // the form view stays open on a failure
@@ -139,37 +139,37 @@ describe('App: errors keep the saved plan, and each has its own message', () => 
     expect(screen.getByRole('region', { name: 'Your plan' })).toBeTruthy(); // and opens the plan view
   });
 
-  it('offers a retry after invalid_coach_response', async () => {
+  it('offers a retry after invalid_coach_response @spec(messages-and-states/failures/a-retry-is-offered-where-e1-offers-one)', async () => {
     const { alert } = await fail(async () => apiFail('invalid_coach_response', { remainingCallsToday: 5 }));
     expect(within(alert).getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 
-  it('gives plan_unreadable a clear message and no retry button', async () => {
+  it('gives plan_unreadable a clear message and no retry button @spec(messages-and-states/failures/unreadable-pasted-week)', async () => {
     const { alert } = await fail(async () => apiFail('plan_unreadable', { message: 'No running sessions found for week 4 in your pasted plan.', remainingCallsToday: 5 }));
     expect(alert.textContent).toContain('No running sessions found for week 4 in your pasted plan.');
     expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('says the daily limit is reached, with no retry @spec(cost-cap/daily-cap/cap-reached)', async () => {
+  it('says the daily limit is reached, with no retry @spec(cost-cap/daily-cap/cap-reached) @spec(messages-and-states/failures/daily-limit)', async () => {
     const { alert } = await fail(async () => apiFail('daily_limit_reached', { remainingCallsToday: 0 }));
     expect(alert.textContent).toMatch(/daily limit reached/i);
     expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('shows the error and that no retries remain when the last allowed call fails @spec(cost-cap/last-allowed-call-fails/last-call-fails)', async () => {
+  it('shows the error and that no retries remain when the last allowed call fails @spec(cost-cap/last-allowed-call-fails/last-call-fails) @spec(messages-and-states/failures/retry-rules-unchanged)', async () => {
     const { alert } = await fail(async () => apiFail('coach_unavailable', { remainingCallsToday: 0 }));
     expect(alert.textContent).toMatch(/nothing was saved/i);
     expect(alert.textContent).toContain('No retries remain today.');
     expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('shows a network failure with a retry', async () => {
+  it('shows a network failure with a retry @spec(messages-and-states/failures/a-retry-is-offered-where-e1-offers-one)', async () => {
     const { alert } = await fail(async () => ({ ok: false as const, failure: { kind: 'network' as const } }));
     expect(alert.textContent).toMatch(/connection/i);
     expect(within(alert).getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 
-  it('shows a timeout with a retry, and says the plan may still have been saved', async () => {
+  it('shows a timeout with a retry, and says the plan may still have been saved @spec(messages-and-states/failures/timeout-keeps-its-hint) @spec(messages-and-states/failures/a-retry-is-offered-where-e1-offers-one)', async () => {
     const { alert } = await fail(async () => ({ ok: false as const, failure: { kind: 'timeout' as const } }));
     expect(alert.textContent).toMatch(/too long/i);
     expect(alert.textContent).toMatch(/may still have been saved/i);
@@ -178,7 +178,7 @@ describe('App: errors keep the saved plan, and each has its own message', () => 
 });
 
 describe('App: waiting', () => {
-  it('shows a "building" message at once and the "waking up the coach" message after 3 s @spec(deploy/cold-start-experience/server-is-waking-up)', async () => {
+  it('shows a "building" message at once and the "waking up the coach" message after 3 s @spec(deploy/cold-start-experience/server-is-waking-up) @spec(messages-and-states/loading-building-and-waking-states/building) @spec(messages-and-states/loading-building-and-waking-states/waking-after-three-seconds)', async () => {
     const api = fakeApi(pastedRecord, () => new Promise(() => {})); // never answers
     render(<App api={api} />);
     await screen.findByRole('region', { name: 'Your plan' });
@@ -454,5 +454,89 @@ describe('App: focus', () => {
     await user.click(within(first).getByRole('button', { name: 'Try again' }));
     expect(api.postPlan).toHaveBeenCalledTimes(2);
     expect(document.activeElement).toBe(screen.getByRole('alert'));
+  });
+});
+
+// Task 2.4: the states use the new components. Behavior and wording stay as in E1; only roles and looks are checked here.
+describe('App: states look like the design system', () => {
+  const classesOf = (el: HTMLElement) => el.className.split(/\s+/);
+
+  it('shows the loading, building and waking lines as status messages on the soft surface @spec(messages-and-states/loading-building-and-waking-states/building)', async () => {
+    const api = fakeApi(pastedRecord, () => new Promise(() => {}));
+    let release!: () => void;
+    const gate = new Promise<ReturnType<typeof ok<typeof pastedRecord>>>((r) => { release = () => r(ok(pastedRecord)); });
+    const slow = { getPlan: vi.fn(() => gate), postPlan: api.postPlan };
+    render(<App api={slow} />);
+    const loading = screen.getByRole('status');
+    expect(loading.textContent).toBe('Loading your saved plan…');
+    expect(classesOf(loading)).toContain('bg-secondary');
+    await act(async () => { release(); });
+    await screen.findByRole('region', { name: 'Your plan' });
+    vi.useFakeTimers();
+    fireEvent.click(nextWeek());
+    fireEvent.click(build());
+    expect(classesOf(screen.getByRole('status'))).toContain('bg-secondary');
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.getByRole('status').textContent).toMatch(/waking up the coach/i);
+    expect(classesOf(screen.getByRole('status'))).toContain('bg-secondary');
+  });
+
+  it('shows a failure as an alert in the danger style with a warning icon and a primary "Try again" button @spec(messages-and-states/failures/alert-role)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(classesOf(alert)).toEqual(expect.arrayContaining(['bg-alert', 'border-alert-border', 'text-alert-foreground']));
+    expect(alert.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(alert.textContent).toMatch(/nothing was saved/i);
+    expect(classesOf(within(alert).getByRole('button', { name: 'Try again' }))).toContain('bg-primary');
+  });
+
+  it('shows no retry and "No retries remain today." for an unreadable week on the last call @spec(messages-and-states/failures/no-retries-remain-for-an-unreadable-week)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('plan_unreadable', { message: 'No running sessions found for week 4 in your pasted plan.', remainingCallsToday: 0 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('No retries remain today.');
+    expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('shows the validation failure with its sentence and each field message, and no retry @spec(messages-and-states/failures/validation-failure-shows-fields)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('validation_error', { fields: { goal: 'Goal is required from the server.' } }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Some answers need fixing. Check the highlighted fields.');
+    expect(screen.getByText('Goal is required from the server.')).toBeTruthy();
+    expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('shows the failed-read message in the soft style, not as an alert', async () => {
+    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), postPlan: vi.fn() };
+    render(<App api={api} />);
+    const note = await screen.findByText('Could not load your saved plan. You can still build a new one.');
+    expect(classesOf(note.closest('[data-slot="alert"]') as HTMLElement)).toContain('bg-secondary');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('App: labels named by the E1 specs', () => {
+  it('shows "from your plan", "coach suggestion", "Rest day", the week, the safety note and "Plan next week" @spec(app-views/labels-named-by-the-e1-specs-keep-their-wording/spec-named-labels-are-present)', async () => {
+    const base = planRecord({ existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 3 });
+    const record = {
+      ...base,
+      plan: {
+        days: base.plan.days.map((d) => (d.day === 'mon' ? { ...d, sessions: [{ discipline: 'running' as const, description: '5 km easy', intensity: 'easy' as const, source: 'athlete' as const }] } : d)),
+        recommendations: ['Add a mobility session.'],
+        safetyNote: 'Please see a qualified professional.',
+      },
+    };
+    await open(record);
+    expect(screen.getByText('from your plan')).toBeTruthy();
+    expect(screen.getByText('coach suggestion')).toBeTruthy();
+    expect(screen.getAllByText('Rest day')).toHaveLength(6);
+    expect(screen.getByText('Week 3 of your running plan')).toBeTruthy();
+    expect(within(screen.getByRole('note', { name: 'Safety note' })).getByText('Please see a qualified professional.')).toBeTruthy();
+    expect(nextWeek()).toBeTruthy();
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type Ref } from 'react';
 import { validateOnboarding, type Onboarding, type PlanRecord } from 'shared';
 import { createApi, type Api, type ApiFailure } from './api.js';
 import { describeFailure } from './failure-message.js';
+import { Button } from '@/components/ui/button';
 import { FORM_FIELD_KEYS, OnboardingForm } from './OnboardingForm.js';
 import { PlanView } from './PlanView.js';
 import { nextWeekSeed } from './seed.js';
@@ -95,8 +96,10 @@ export function App({ api = defaultApi }: { api?: Api }) {
       {planView && (
         <>
           <PlanView record={shown} headingRef={planHeading} />
-          <button type="button" onClick={() => go('form', nextWeekSeed(shown.onboarding))}>Plan next week</button>
-          <button type="button" onClick={() => go('form')}>New plan</button>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Button type="button" onClick={() => go('form', nextWeekSeed(shown.onboarding))}>Plan next week</Button>
+            <Button type="button" variant="outline" onClick={() => go('form')}>New plan</Button>
+          </div>
         </>
       )}
       {formView && (

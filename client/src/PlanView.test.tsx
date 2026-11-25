@@ -131,3 +131,147 @@ describe('PlanView: accepts a full plan response too', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(7);
   });
 });
+
+// Task 2.3: the rebuilt plan view: summary card, day cards with icon tiles, the safety note first.
+describe('PlanView: summary of the week', () => {
+  const summary = () => within(screen.getByRole('group', { name: 'Week summary' }));
+  const stat = (text: string) => summary().getByText((_, el) => el?.tagName === 'P' && el.textContent === text);
+
+  it('counts runs, CrossFit sessions and rest days from the plan @spec(plan-presentation/summary-of-the-week/counts-match-the-plan)', () => {
+    render(<PlanView record={record({
+      mon: [s('running', 'Easy'), s('crossfit', 'WOD')], tue: [s('crossfit', 'Skills')], wed: [s('running', 'Tempo'), s('crossfit', 'Strength')],
+      thu: [s('crossfit', 'Metcon')], fri: [s('running', 'Long')], sat: [s('crossfit', 'Team WOD')],
+    })} />);
+    expect(stat('3 runs')).toBeTruthy();
+    expect(stat('5 CrossFit')).toBeTruthy();
+    expect(stat('1 rest day')).toBeTruthy();
+  });
+
+  it('uses the singular for 1 and the plural otherwise, and always "CrossFit" @spec(plan-presentation/summary-of-the-week/counts-match-the-plan)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy')] })} />);
+    expect(stat('1 run')).toBeTruthy();
+    expect(stat('0 CrossFit')).toBeTruthy();
+    expect(stat('6 rest days')).toBeTruthy();
+  });
+
+  it('counts both sessions of a day and does not call that day a rest day @spec(plan-presentation/summary-of-the-week/two-sessions-on-a-day-count-twice)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy'), s('crossfit', 'WOD')] })} />);
+    expect(stat('1 run')).toBeTruthy();
+    expect(stat('1 CrossFit')).toBeTruthy();
+    expect(stat('6 rest days')).toBeTruthy();
+  });
+
+  it('shows the week label for a known week and none for a null week @spec(plan-presentation/summary-of-the-week/week-label)', () => {
+    const { unmount } = render(<PlanView record={record({}, { pastedPlanWeek: 3 })} />);
+    expect(screen.getByText('Week 3 of your running plan')).toBeTruthy();
+    unmount();
+    render(<PlanView record={record({})} />);
+    expect(screen.queryByText(/of your running plan/)).toBeNull();
+  });
+});
+
+describe('PlanView: day cards', () => {
+  it('shows a rest day in the quieter style and a training day in the normal card @spec(plan-presentation/one-card-per-day-in-week-order/rest-day)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy 5 km')] })} />);
+    const rest = within(dayItem('Tuesday')).getByText('Rest day').closest('[data-slot="card"]');
+    expect(rest?.className).toContain('border-dashed');
+    expect(dayItem('Monday').querySelector('[data-slot="card"]')?.className).not.toContain('border-dashed');
+    expect(within(dayItem('Tuesday')).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  it('keeps the combined-load note inside the card of its day @spec(plan-presentation/one-card-per-day-in-week-order/combined-load-note-stays-with-its-day)', () => {
+    render(<PlanView record={record({ thu: [s('running', 'Tempo'), s('crossfit', 'WOD')] }, { notes: { thu: 'Run first.' } })} />);
+    expect(dayItem('Thursday').querySelector('[data-slot="card"]')?.textContent).toContain('Run first.');
+  });
+
+  it('keeps the seven days in week order @spec(plan-presentation/one-card-per-day-in-week-order/days-in-week-order)', () => {
+    render(<PlanView record={record({}, { order: ['sun', 'sat', 'fri', 'thu', 'wed', 'tue', 'mon'] })} />);
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(FULL);
+  });
+
+  it('names each session by text and adds an icon as a cue only @spec(plan-presentation/sessions-are-identified-by-text/discipline-and-intensity-are-text)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy 5 km', 'coach', 'easy')], tue: [s('crossfit', 'Strength', 'coach', 'hard')] })} />);
+    for (const [day, discipline, intensity] of [['Monday', 'Running', 'Easy'], ['Tuesday', 'CrossFit', 'Hard']] as const) {
+      const card = within(dayItem(day));
+      expect(card.getByText(discipline)).toBeTruthy();
+      expect(card.getByText(intensity)).toBeTruthy();
+      const icon = dayItem(day).querySelector('svg');
+      expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    }
+    expect(dayItem('Wednesday').querySelector('svg')?.getAttribute('aria-hidden')).toBe('true'); // the rest day's moon
+  });
+
+  it('gives a running session and a CrossFit session different icon tiles, text staying the same', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy 5 km')], tue: [s('crossfit', 'Strength')] })} />);
+    const tile = (day: string) => dayItem(day).querySelector('svg')?.parentElement?.className ?? '';
+    expect(tile('Monday')).toContain('bg-run-soft');
+    expect(tile('Tuesday')).toContain('bg-crossfit-soft');
+  });
+
+  it('shows a 400-character description in full @spec(plan-presentation/sessions-are-identified-by-text/long-text-is-not-cut-off)', () => {
+    const long = 'word '.repeat(80).trim();
+    render(<PlanView record={record({ mon: [s('running', long)] })} />);
+    expect(within(dayItem('Monday')).getByText(long)).toBeTruthy();
+    expect(within(dayItem('Monday')).getByText(long).className).toContain('break-words');
+  });
+});
+
+describe('PlanView: the safety note comes first', () => {
+  const note = 'This coach is not a clinician. Please see a qualified professional.';
+  const before = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it('precedes the summary and every day card, with a warning icon and its text @spec(plan-presentation/the-safety-note-comes-first/note-first) @spec(responsive-accessibility/contrast-and-signals/errors-and-the-safety-note-carry-text)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy')] }, { safetyNote: note })} />);
+    const el = screen.getByRole('note', { name: 'Safety note' });
+    expect(before(el, screen.getByRole('group', { name: 'Week summary' }))).toBe(true);
+    for (const name of FULL) expect(before(el, dayItem(name))).toBe(true);
+    expect(el.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(el).getByText(note)).toBeTruthy();
+  });
+
+  it('shows its text at least as large as a day card\'s text @spec(plan-presentation/the-safety-note-comes-first/note-first)', () => {
+    render(<PlanView record={record({ mon: [s('running', 'Easy 5 km')] }, { safetyNote: note })} />);
+    expect(within(screen.getByRole('note')).getByText(note).className).toContain('text-base');
+    expect(within(dayItem('Monday')).getByText('Easy 5 km').className).toContain('text-base');
+  });
+
+  it('shows no note element when the plan has none @spec(plan-presentation/the-safety-note-comes-first/no-note-without-a-note)', () => {
+    render(<PlanView record={record({})} />);
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByText('Safety note')).toBeNull();
+  });
+});
+
+describe('PlanView: labels and suggestions', () => {
+  it('labels every session "from your plan" and shows no suggestions when there are none @spec(plan-presentation/the-safety-note-comes-first/only-the-athletes-sessions)', () => {
+    render(<PlanView record={record({ mon: [s('running', '5 km easy', 'athlete')], wed: [s('running', '8 km tempo', 'athlete', 'moderate')] })} />);
+    expect(screen.getAllByText('from your plan')).toHaveLength(2);
+    expect(screen.queryByRole('list', { name: 'Coach suggestions' })).toBeNull();
+  });
+
+  it('labels the athlete\'s session and each suggestion, and shows the athlete\'s text exactly as saved @spec(plan-presentation/sessions-are-identified-by-text/athlete-sessions-and-suggestions-are-labeled)', () => {
+    const saved = '  5 km easy,   keep it   conversational ';
+    render(<PlanView record={record({ mon: [s('running', saved, 'athlete')], tue: [s('crossfit', 'Strength')] }, { recommendations: ['Add a mobility session.'] })} />);
+    expect(within(dayItem('Monday')).getByText('from your plan')).toBeTruthy();
+    expect(within(dayItem('Tuesday')).queryByText('from your plan')).toBeNull();
+    expect(within(screen.getByRole('list', { name: 'Coach suggestions' })).getByText('coach suggestion')).toBeTruthy();
+    expect(dayItem('Monday').textContent).toContain(saved); // not trimmed, not reformatted
+  });
+
+  it('lists the suggestions with a "coach suggestion" label when no plan was pasted @spec(plan-presentation/the-safety-note-comes-first/suggestions-without-a-pasted-plan)', () => {
+    render(<PlanView record={record({}, { recommendations: ['Walk on rest days.', 'Sleep more.'] })} />);
+    const items = within(screen.getByRole('list', { name: 'Coach suggestions' })).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    for (const item of items) expect(within(item).getByText('coach suggestion')).toBeTruthy();
+    expect(screen.queryByText(/of your running plan/)).toBeNull();
+  });
+
+  it('keeps the accessible names: a region "Your plan", seven days, the suggestions list, the note @spec(app-views/labels-named-by-the-e1-specs-keep-their-wording/accessible-names-are-kept)', () => {
+    render(<PlanView record={record({}, { safetyNote: 'Careful.', recommendations: ['Rest.'] })} />);
+    const region = screen.getByRole('region', { name: 'Your plan' });
+    expect(within(region).getByRole('heading', { level: 2, name: 'Your plan' })).toBeTruthy();
+    for (const name of FULL) expect(within(region).getByRole('listitem', { name })).toBeTruthy();
+    expect(within(region).getByRole('list', { name: 'Coach suggestions' })).toBeTruthy();
+    expect(within(region).getByRole('note', { name: 'Safety note' })).toBeTruthy();
+  });
+});

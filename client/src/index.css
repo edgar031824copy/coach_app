@@ -3,3 +3,7 @@
 @import "tailwindcss/theme";
 @import "tailwindcss/utilities";
 @import "./styles/tokens.css";
+
+/* Light only, on the page color: the tokens assume --fg on --page, so a dark OS must not repaint the canvas. */
+:root { color-scheme: light; }
+body { background: var(--page); color: var(--fg); }

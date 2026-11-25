@@ -101,3 +101,12 @@ describe('raw colors', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('the safety note', () => {
+  it('is at least as readable as the weakest text on a day card @spec(plan-presentation/the-safety-note-comes-first/note-first)', () => {
+    const note = contrastRatio(tokens['alert-fg'] ?? '', tokens['alert-bg'] ?? '');
+    // A day card holds main text (fg) and secondary text (muted-fg) on the card color; the note must beat the weaker one.
+    const weakestOnCard = Math.min(contrastRatio(tokens['fg'] ?? '', tokens['card'] ?? ''), contrastRatio(tokens['muted-fg'] ?? '', tokens['card'] ?? ''));
+    expect(note).toBeGreaterThanOrEqual(weakestOnCard);
+  });
+});

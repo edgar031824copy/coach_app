@@ -1,5 +1,6 @@
 /* Minimal layout only: stacked fields, readable width, errors that look like errors. Visual design is a later decision. */
-:root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.4; }
+@layer legacy {
+:root { font-family: system-ui, sans-serif; line-height: 1.4; }
 body { margin: 0; }
 main { max-width: 40rem; margin: 0 auto; padding: 1rem; }
 form { display: grid; gap: 1rem; }
@@ -11,7 +12,6 @@ input[type='checkbox'] { padding: 0; }
 fieldset { display: grid; gap: 0.5rem; border: 1px solid #8886; border-radius: 6px; }
 [aria-invalid='true'] { border-color: #c62828; outline-color: #c62828; }
 .error { margin: 0; color: #c62828; font-size: 0.9rem; }
-@media (prefers-color-scheme: dark) { .error { color: #ff8a80; } }
 button { justify-self: start; cursor: pointer; }
 button:disabled { cursor: progress; }
 .days { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
@@ -28,3 +28,4 @@ button:disabled { cursor: progress; }
 .tag { font-size: 0.75rem; border: 1px solid #8888; border-radius: 999px; padding: 0 0.5rem; }
 .safety-note { border-left: 4px solid #e65100; padding: 0.25rem 0.75rem; background: #e6510014; }
 .recommendations { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+}

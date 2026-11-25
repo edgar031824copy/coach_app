@@ -1,6 +1,6 @@
 # E1b design: chosen direction
 
-**Chosen by the owner (2026-11-24): H, light.** Open `mockups/index.html`; phone screenshots (390 px) are in `mockups/shots/`. Static pages with made-up data and the real E1 labels. System fonts and plain CSS so they open anywhere; the build uses Tailwind, shadcn/ui and the same system font stack (a self-hosted font is a later option). Dark is a later, separate change: `mockups/h/style.css` already holds the dark tokens (`data-theme="dark"`).
+**Chosen by the owner (2026-11-24): H, light.** Open `mockups/index.html`; phone screenshots (390 px) are in `mockups/shots/`. Static pages with made-up data and the real E1 labels. The mockups list Inter first in their font stack but ship no font file, so they show the system font; the build uses Tailwind's default system sans-serif stack and downloads no font (a self-hosted font is a later option), and it is built with Tailwind and shadcn/ui. Dark is a later, separate change: `mockups/h/style.css` already holds the dark tokens (`data-theme="dark"`).
 
 ## The design
 - **Look:** soft grey page, white rounded cards with a light shadow, one blue accent, small outlined chips ("from your plan", "coach suggestion", intensity), distances in bold.
@@ -13,5 +13,10 @@
 ## Why this one
 Rounds A to E (bold color blocks, a dark neon look, a yellow safety box, a combined-color week strip) were rejected as too loud or too basic. Research that shaped H: running and training apps (Runna, Hevy, Strava) use an icon per workout type, one accent and simple cards or lists; form guidance (single column, grouped sections, fold away optional parts, errors next to the field, a visible primary button). A step-by-step wizard was not built: it adds back and next logic for six answers. Earlier rounds are in this branch's git history.
 
-## Settled in the E1b specs
-Chip wording ("Half marathon", "10K", "Stay fit and balanced", "Get stronger"), accent blue `#2563EB`, system font stack, summary card kept (the owner can remove it later).
+## Decided in E1b
+- **Chip wording** for the quick goal ideas: "Half marathon", "10K", "Stay fit and balanced", "Get stronger".
+- **Accent:** blue `#2563EB` (and a darker `#1D4ED8` on hover, so white text keeps its contrast).
+- **Font:** the system sans-serif stack, no font file.
+- **Summary card:** kept; the owner can remove it later (a small change).
+- **Changed from the mockups for accessibility** (task 3.1 review): the day row runs to the card edge so each day button is 44 px wide; the chosen level has an accent ring.
+- **Not in E1b:** a dark theme (a later change; the tokens are written so one only adds a second block of values), a step-by-step wizard, a router.

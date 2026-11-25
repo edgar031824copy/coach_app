@@ -37,7 +37,7 @@ const KEY_OF: Record<keyof Values, Key> = {
 const blank = (s: string) => s.trim() === '';
 
 // Page order of the error keys, and the element that takes focus for each (a group of days: its first box).
-const PAGE_ORDER: Key[] = ['goal', 'runningLevel', 'crossfitLevel', 'injuries', 'runningDays', 'crossfitDays', 'existingRunningPlan', 'pastedPlanWeek', 'weeklyTraining', 'targetEvent'];
+const PAGE_ORDER: Key[] = ['goal', 'runningLevel', 'crossfitLevel', 'runningDays', 'crossfitDays', 'injuries', 'existingRunningPlan', 'pastedPlanWeek', 'weeklyTraining', 'targetEvent'];
 const FOCUS_ID: Record<Key, string> = {
   goal: 'f-goal', runningLevel: 'f-runningLevel', crossfitLevel: 'f-crossfitLevel', injuries: 'f-injuries', runningDays: 'f-runningDays', crossfitDays: 'f-crossfitDays',
   existingRunningPlan: 'f-existingRunningPlan', pastedPlanWeek: 'f-pastedPlanWeek', weeklyTraining: 'f-runningSessions', targetEvent: 'f-eventName',
@@ -171,12 +171,12 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
 
   const errorLine = (id: string, error: string) => <p id={id} className="m-0 mt-1.5 text-sm font-semibold text-error">{error}</p>;
 
-  const text = (name: keyof Values, label: string, props: { multiline?: boolean; type?: string; grouped?: boolean } = {}) => {
+  const text = (name: keyof Values, label: string, props: { multiline?: boolean; type?: string; grouped?: boolean; describedBy?: string } = {}) => {
     const key = KEY_OF[name];
     const error = props.grouped ? undefined : message(key); // a grouped input shares one message, shown under its group
     const id = `f-${name}`;
     const common = {
-      id, value: values[name] as string, 'aria-invalid': error ? true : undefined, 'aria-describedby': error ? `${id}-error` : undefined,
+      id, value: values[name] as string, 'aria-invalid': error ? true : undefined, 'aria-describedby': error ? `${id}-error` : props.describedBy,
       onChange: (e: { target: { value: string } }) => change(name, e.target.value as never), onBlur: () => touch(name),
     };
     return (
@@ -202,7 +202,7 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
                 onChange={() => change(name, option.id)} onBlur={() => touch(name)}
                 className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
               />
-              <span className="grid h-11 pointer-fine:h-9 place-items-center rounded-md text-base text-muted-foreground peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-card peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+              <span className="grid h-11 pointer-fine:h-9 place-items-center rounded-md text-base text-muted-foreground peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-card peer-checked:ring-2 peer-checked:ring-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
                 {option.label}
               </span>
             </label>
@@ -219,14 +219,14 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
     return (
       <fieldset id={`f-${name}`} aria-invalid={error ? true : undefined} aria-describedby={error ? `f-${name}-error` : undefined} className="m-0 min-w-0 border-0 p-0">
         <legend className="p-0 text-sm font-semibold">{legend}</legend>
-        <div className="mt-2 grid grid-cols-7 gap-1.5">
+        <div className="-mx-3 mt-2 grid grid-cols-7 gap-0.5">
           {DAYS.map(({ id, label }) => (
             <label key={id} className="relative font-semibold">
               <input
                 type="checkbox" checked={values[name].includes(id)} onChange={() => toggleDay(name, id)}
                 className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
               />
-              <span className="grid h-11 pointer-fine:h-9 min-w-6 place-items-center rounded-md border border-border bg-card text-sm peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+              <span className="grid h-11 pointer-fine:h-9 min-w-11 place-items-center rounded-md border border-border bg-card text-sm peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
                 {label}
               </span>
             </label>
@@ -314,15 +314,15 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
       </>)}
       {part('week', 'My usual week', <fieldset aria-invalid={weeklyError ? true : undefined} className="m-0 grid min-w-0 gap-4 border-0 p-0">
         <legend className="sr-only">Your usual week</legend>
-        {text('runningSessions', 'Running sessions per week', { type: 'number', grouped: true })}
-        {text('crossfitSessions', 'CrossFit sessions per week', { type: 'number', grouped: true })}
-        {text('runningKm', 'Running km per week', { type: 'number', grouped: true })}
+        {text('runningSessions', 'Running sessions per week', { type: 'number', grouped: true, describedBy: weeklyError ? 'f-weeklyTraining-error' : undefined })}
+        {text('crossfitSessions', 'CrossFit sessions per week', { type: 'number', grouped: true, describedBy: weeklyError ? 'f-weeklyTraining-error' : undefined })}
+        {text('runningKm', 'Running km per week', { type: 'number', grouped: true, describedBy: weeklyError ? 'f-weeklyTraining-error' : undefined })}
         {weeklyError && errorLine('f-weeklyTraining-error', weeklyError)}
       </fieldset>)}
       {part('event', 'Target event', <fieldset aria-invalid={eventError ? true : undefined} className="m-0 grid min-w-0 gap-4 border-0 p-0">
         <legend className="sr-only">Your target event</legend>
-        {text('eventName', 'Event name', { grouped: true })}
-        {text('eventDate', 'Event date', { type: 'date', grouped: true })}
+        {text('eventName', 'Event name', { grouped: true, describedBy: eventError ? 'f-targetEvent-error' : undefined })}
+        {text('eventDate', 'Event date', { type: 'date', grouped: true, describedBy: eventError ? 'f-targetEvent-error' : undefined })}
         {eventError && errorLine('f-targetEvent-error', eventError)}
       </fieldset>)}
       {unplaced.map(([k, m]) => errorLine(`f-${k}-error`, m))}

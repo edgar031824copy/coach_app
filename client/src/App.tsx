@@ -118,7 +118,7 @@ export function App({ api = defaultApi }: { api?: Api }) {
         <>
           <h2 ref={formHeading} tabIndex={-1} className="m-0 mb-1 text-2xl font-extrabold leading-tight">New plan</h2>
           <p className="m-0 mb-4 text-base text-muted-foreground">Tell the coach about you. It suggests; you decide.</p>
-          {shown && <Button type="button" variant="outline" onClick={() => go('plan')} disabled={busy}>My plan</Button>}
+          {shown && <Button type="button" variant="outline" className="mb-4" onClick={() => go('plan')} disabled={busy}>My plan</Button>}
           {saved.status === 'failed' && readNoteWanted && <Alert className="mt-4">Could not load your saved plan. You can still build a new one.</Alert>}
           <OnboardingForm key={seed?.n ?? 0} initial={seed?.onboarding} onSubmit={(o) => void send(o)} busy={busy} serverFields={serverFields} />
           {state.phase === 'loading' && <Status>Building your plan…</Status>}

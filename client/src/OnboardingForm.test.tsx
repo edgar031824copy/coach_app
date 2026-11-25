@@ -569,6 +569,17 @@ describe('OnboardingForm: focus on the first invalid field when submitting', () 
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('puts the training days before the pain or injury field, as they come first on the page @spec(form-presentation/same-validation-and-behavior-as-e1/focus-on-the-first-invalid-field)', async () => {
+    const { user, onSubmit } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'Run');
+    await user.click(level('Running level', 'Beginner'));
+    await user.click(level('CrossFit level', 'Beginner'));
+    fireEvent.change(screen.getByLabelText(/injuries or pain/i), { target: { value: 'x'.repeat(3000) } }); // too long, and no day chosen
+    await user.click(submitButton());
+    expect(document.activeElement).toBe(firstRunningDay());
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('moves focus again on a second submit after the athlete has gone elsewhere @spec(form-presentation/same-validation-and-behavior-as-e1/focus-on-the-first-invalid-field)', async () => {
     const { user } = setup();
     await user.click(submitButton());
@@ -609,5 +620,54 @@ describe('OnboardingForm: every error shows words', () => {
     const goal = screen.getByLabelText('Goal');
     expect(goal.getAttribute('aria-invalid')).toBe('true');
     expect(document.getElementById(goal.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Goal is required from the server.');
+  });
+});
+
+// Review fixes for group 3.
+describe('OnboardingForm: controls meet the touch and contrast rules', () => {
+  it('marks the chosen level with a ring in the accent color, not only a white fill on a grey track', () => {
+    setup();
+    const pill = level('Running level', 'Beginner').nextElementSibling as HTMLElement;
+    expect(pill.className).toContain('peer-checked:ring-2');
+    expect(pill.className).toContain('peer-checked:ring-primary');
+  });
+
+  it('lets each group of seven day buttons use the full width of its card, with room for 44 px each', () => {
+    setup();
+    for (const group of ['Running days', 'CrossFit days']) {
+      const row = within(screen.getByRole('group', { name: group })).getAllByRole('checkbox')[0]?.closest('label')?.parentElement as HTMLElement;
+      expect(row.className.split(/\s+/)).toEqual(expect.arrayContaining(['grid-cols-7', '-mx-3', 'gap-0.5']));
+      const pill = row.querySelector('span') as HTMLElement;
+      expect(pill.className).toContain('min-w-11');
+    }
+  });
+});
+
+describe('OnboardingForm: a group message is tied to its fields', () => {
+  it('describes the weekly fields and the event fields by the group\'s message, so it is read when focus lands there', async () => {
+    const { user } = setup();
+    await fillValid(user);
+    await openPart(user, WEEK_PART);
+    await user.type(screen.getByLabelText(/running sessions per week/i), '3'); // CrossFit sessions left blank
+    await openPart(user, EVENT_PART);
+    await user.type(screen.getByLabelText(/event name/i), 'City Half');
+    await user.type(screen.getByLabelText(/event date/i), '2020-01-01');
+    await user.click(submitButton());
+    const groups: [RegExp[], string][] = [
+      [[/running sessions per week/i, /crossfit sessions per week/i, /km per week/i], 'Weekly training sessions must be whole numbers.'],
+      [[/event name/i, /event date/i], 'The event date cannot be in the past (UTC).'],
+    ];
+    for (const [labels, message] of groups) {
+      for (const label of labels) {
+        const field = screen.getByLabelText(label);
+        expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent, String(label)).toBe(message);
+      }
+    }
+  });
+
+  it('leaves the fields undescribed while their group has no message', async () => {
+    setup();
+    expect(screen.getByLabelText(/running sessions per week/i).getAttribute('aria-describedby')).toBeNull();
+    expect(screen.getByLabelText(/event name/i).getAttribute('aria-describedby')).toBeNull();
   });
 });

@@ -13,12 +13,12 @@ const build = () => screen.getByRole('button', { name: /build my plan/i });
 const newPlan = () => screen.getByRole('button', { name: 'New plan' });
 const myPlan = () => screen.getByRole('button', { name: 'My plan' });
 const planRegion = () => screen.queryByRole('region', { name: 'Your plan' });
-// The smallest valid form. Task 3.1 changes the level controls from selects to radios; this is the one place to update.
+// The smallest valid form.
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   const inGroup = (group: string, name: string) => within(screen.getByRole('group', { name: group })).getByRole('checkbox', { name });
   await user.type(screen.getByLabelText(/goal/i), 'Run a half marathon');
-  await user.selectOptions(screen.getByLabelText(/running level/i), 'intermediate');
-  await user.selectOptions(screen.getByLabelText(/crossfit level/i), 'beginner');
+  await user.click(within(screen.getByRole('group', { name: 'Running level' })).getByRole('radio', { name: 'Intermediate' }));
+  await user.click(within(screen.getByRole('group', { name: 'CrossFit level' })).getByRole('radio', { name: 'Beginner' }));
   await user.click(inGroup('Running days', 'Mon'));
   await user.click(inGroup('CrossFit days', 'Tue'));
 }
@@ -556,5 +556,22 @@ describe('App: review fixes', () => {
     await user.click(newPlan());
     const classes = myPlan().className.split(/\s+/);
     expect(classes).toEqual(expect.arrayContaining(['border-border', 'bg-card', 'h-11', 'pointer-fine:h-9']));
+  });
+});
+
+describe('App: week 53 after Plan next week', () => {
+  it('opens the form with week 53, its error and focus on that field, and lets the athlete fix it @spec(form-presentation/same-validation-and-behavior-as-e1/week-53-after-plan-next-week)', async () => {
+    const { api, user } = await open(planRecord({ existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 52 }));
+    await user.click(nextWeek());
+    expect(week()).toBe('53');
+    expect(screen.getByText('The plan week must be a whole number from 1 to 52.')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i));
+    expect(screen.getByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    // the value is editable before submitting, and the error goes once it is fixed
+    await user.clear(screen.getByLabelText(/week of your plan/i));
+    await user.type(screen.getByLabelText(/week of your plan/i), '1');
+    expect(screen.queryByText('The plan week must be a whole number from 1 to 52.')).toBeNull();
+    await user.click(build());
+    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 1 }));
   });
 });

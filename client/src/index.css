@@ -1,9 +1,13 @@
-/* Tailwind without its global reset (preflight) for now: the current screens keep their look until the views are
-   rebuilt in the next task groups. */
+/* Tailwind with its global reset (preflight) in the base layer, so utilities always win over it. The reset was left out
+   while E1's plain stylesheet was still in use; the form rebuild (E1b task 3.1) replaced that stylesheet. */
 @import "tailwindcss/theme";
+@import "tailwindcss/preflight" layer(base);
 @import "tailwindcss/utilities";
 @import "./styles/tokens.css";
 
 /* Light only, on the page color: the tokens assume --fg on --page, so a dark OS must not repaint the canvas. */
 :root { color-scheme: light; }
 body { background: var(--page); color: var(--fg); }
+
+/* The pinned action bar (about 4.5 rem tall, plus the safe-area inset) covers the bottom of the screen; keep a focused field clear of it. */
+html { scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }

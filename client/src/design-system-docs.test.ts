@@ -44,4 +44,12 @@ describe('components/ui', () => {
     const offenders = readdirSync(UI).filter(isSource).filter((f) => PALETTE.test(readFileSync(join(UI, f), 'utf8')));
     expect(offenders).toEqual([]);
   });
+
+  // In Tailwind 4, `outline-none` sets the outline style to none, and `focus-visible:outline-2` then draws nothing. This
+  // was found by the Playwright focus check (task 4.1): inputs, chips, summaries and the main button had no focus ring.
+  it('does not use outline-none, which would remove the focus ring that focus-visible:outline-2 asks for', () => {
+    const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
+    const offenders = walk(SRC).filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f)).filter((f) => /\boutline-none\b/.test(readFileSync(f, 'utf8')));
+    expect(offenders.map((f) => f.replace(SRC, ''))).toEqual([]);
+  });
 });

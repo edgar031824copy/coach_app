@@ -20,7 +20,7 @@ const plural = (n: number, one: string, many: string) => `${n === 1 ? one : many
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <p className="rounded-lg border border-border bg-card px-3 py-2.5">
+    <p className="m-0 rounded-lg border border-border bg-card px-3 py-2.5">
       <span className="block text-xl font-extrabold leading-tight">{n}</span>
       {' '}
       <span className="text-sm font-semibold text-muted-foreground">{label}</span>
@@ -43,16 +43,16 @@ export function PlanView({ record, headingRef }: { record: PlanRecord; headingRe
         <Alert variant="danger" role="note" aria-label="Safety note">
           <WarningIcon aria-hidden="true" />
           <div className="min-w-0">
-            <p className="font-bold">Safety note</p>
-            <p className="break-words text-base">{plan.safetyNote}</p>
+            <p className="m-0 font-bold">Safety note</p>
+            <p className="m-0 break-words text-base">{plan.safetyNote}</p>
           </div>
         </Alert>
       )}
 
       <Card className="grid gap-3">
         <div>
-          {onboarding.pastedPlanWeek !== null && <p className="text-sm font-semibold text-muted-foreground">Week {onboarding.pastedPlanWeek} of your running plan</p>}
-          <h2 id="plan-heading" ref={headingRef} tabIndex={-1} className="text-2xl font-extrabold leading-tight">Your plan</h2>
+          {onboarding.pastedPlanWeek !== null && <p className="m-0 text-sm font-semibold text-muted-foreground">Week {onboarding.pastedPlanWeek} of your running plan</p>}
+          <h2 id="plan-heading" ref={headingRef} tabIndex={-1} className="m-0 text-2xl font-extrabold leading-tight">Your plan</h2>
         </div>
         <div role="group" aria-label="Week summary" className="grid grid-cols-3 gap-2">
           <Stat n={runs} label={plural(runs, 'run', 'runs')} />
@@ -61,7 +61,7 @@ export function PlanView({ record, headingRef }: { record: PlanRecord; headingRe
         </div>
       </Card>
 
-      <ol className="grid gap-3">
+      <ol className="m-0 grid list-none gap-3 p-0">
         {DAYS.map(({ id, name }) => {
           const day = byDay.get(id);
           const sessions = sessionsOf(id);
@@ -70,32 +70,33 @@ export function PlanView({ record, headingRef }: { record: PlanRecord; headingRe
               {sessions.length === 0 ? (
                 <Card variant="quiet" className="flex items-center gap-3">
                   <span className={`${TILE_BASE} bg-secondary text-muted-foreground`}><MoonIcon /></span>
-                  <div>
-                    <h3 id={`day-${id}`} className="text-lg font-bold">{name}</h3>
-                    <p className="text-base">Rest day</p>
+                  <div className="min-w-0">
+                    <h3 id={`day-${id}`} className="m-0 text-lg font-bold">{name}</h3>
+                    <p className="m-0 text-base">Rest day</p>
+                    {day?.combinedLoadNote && <p className="m-0 mt-2 break-words text-sm">{day.combinedLoadNote}</p>}
                   </div>
                 </Card>
               ) : (
                 <Card>
-                  <h3 id={`day-${id}`} className="mb-3 text-lg font-bold">{name}</h3>
-                  <ul className="grid gap-3.5">
+                  <h3 id={`day-${id}`} className="m-0 mb-3 text-lg font-bold">{name}</h3>
+                  <ul className="m-0 grid list-none gap-3.5 p-0">
                     {sessions.map((session, i) => {
                       const Icon = ICON[session.discipline];
                       return (
                         <li key={i} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
                           <span className={`${TILE_BASE} ${TILE[session.discipline]} row-span-2`}><Icon /></span>
-                          <p className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
+                          <p className="m-0 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
                             <span>{DISCIPLINE[session.discipline]}</span>
                             {session.source === 'athlete' && <Badge>from your plan</Badge>}
                           </p>
-                          <p className="text-base">
+                          <p className="m-0 text-base">
                             <span className="break-words text-base">{session.description}</span> <Badge>{INTENSITY[session.intensity]}</Badge>
                           </p>
                         </li>
                       );
                     })}
                   </ul>
-                  {day?.combinedLoadNote && <p className="mt-3 break-words rounded-md bg-secondary px-3 py-2.5 text-sm text-muted-foreground">{day.combinedLoadNote}</p>}
+                  {day?.combinedLoadNote && <p className="m-0 mt-3 break-words rounded-md bg-secondary px-3 py-2.5 text-sm text-muted-foreground">{day.combinedLoadNote}</p>}
                 </Card>
               )}
             </li>
@@ -105,12 +106,12 @@ export function PlanView({ record, headingRef }: { record: PlanRecord; headingRe
 
       {plan.recommendations.length > 0 && (
         <div>
-          <p id="suggestions-label" className="mb-2 text-lg font-bold">Coach suggestions</p>
-          <ul aria-labelledby="suggestions-label" className="grid gap-2">
+          <p id="suggestions-label" className="m-0 mb-2 text-lg font-bold">Coach suggestions</p>
+          <ul aria-labelledby="suggestions-label" className="m-0 grid list-none gap-2 p-0">
             {plan.recommendations.map((text, i) => (
               <li key={i} className="rounded-lg border border-border bg-card px-3.5 py-3 text-base">
                 <Badge className="mb-1.5">coach suggestion</Badge>
-                <p className="break-words">{text}</p>
+                <p className="m-0 break-words">{text}</p>
               </li>
             ))}
           </ul>

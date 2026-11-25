@@ -234,7 +234,7 @@ describe('OnboardingForm: focus', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i));
   });
 
-  it('focuses the first invalid field in page order, not the goal, when several are invalid', () => {
+  it('focuses the first invalid field in page order (the goal, before the injuries) when several are invalid', () => {
     setup({ initial: { ...base, goal: '', injuries: 'x'.repeat(3000) } });
     expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
   });

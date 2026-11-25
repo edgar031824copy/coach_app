@@ -147,6 +147,7 @@ describe('App: errors keep the saved plan, and each has its own message', () => 
   it('gives plan_unreadable a clear message and no retry button @spec(messages-and-states/failures/unreadable-pasted-week)', async () => {
     const { alert } = await fail(async () => apiFail('plan_unreadable', { message: 'No running sessions found for week 4 in your pasted plan.', remainingCallsToday: 5 }));
     expect(alert.textContent).toContain('No running sessions found for week 4 in your pasted plan.');
+    expect(alert.textContent).toContain('Check the pasted plan and the week number'); // the client's hint follows the server's sentence
     expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
@@ -538,5 +539,22 @@ describe('App: labels named by the E1 specs', () => {
     expect(screen.getByText('Week 3 of your running plan')).toBeTruthy();
     expect(within(screen.getByRole('note', { name: 'Safety note' })).getByText('Please see a qualified professional.')).toBeTruthy();
     expect(nextWeek()).toBeTruthy();
+  });
+});
+
+describe('App: review fixes', () => {
+  it('puts focus on the plan heading when the first plan is built from an empty form @spec(app-views/outcomes-of-a-submit/success-shows-the-new-plan)', async () => {
+    const { user } = await open(null);
+    await fillValidForm(user);
+    await user.click(build());
+    await screen.findByRole('region', { name: 'Your plan' });
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'Your plan' }));
+  });
+
+  it('shows "My plan" as an outline design-system button', async () => {
+    const { user } = await open(pastedRecord);
+    await user.click(newPlan());
+    const classes = myPlan().className.split(/\s+/);
+    expect(classes).toEqual(expect.arrayContaining(['border-border', 'bg-card', 'h-11', 'pointer-fine:h-9']));
   });
 });

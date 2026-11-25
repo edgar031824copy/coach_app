@@ -275,3 +275,27 @@ describe('PlanView: labels and suggestions', () => {
     expect(within(region).getByRole('note', { name: 'Safety note' })).toBeTruthy();
   });
 });
+
+// Review fix: Tailwind's reset is off, so lists and text elements keep the browser's markers, indent and margins unless
+// the markup removes them. jsdom cannot see that; this checks that the markup does.
+describe('PlanView: no browser default spacing or markers', () => {
+  const full = () => render(<PlanView record={record({ mon: [s('running', 'Easy', 'athlete'), s('crossfit', 'WOD')] }, { notes: { mon: 'Run first.' }, safetyNote: 'Careful.', recommendations: ['Rest.'], pastedPlanWeek: 2 })} />).container;
+
+  it('strips the marker and the indent from every list', () => {
+    for (const list of full().querySelectorAll('ul, ol')) {
+      expect(list.className.split(/\s+/), list.outerHTML.slice(0, 60)).toEqual(expect.arrayContaining(['list-none', 'm-0', 'p-0']));
+    }
+  });
+
+  it('sets the margin of every paragraph and heading itself', () => {
+    for (const el of full().querySelectorAll('p, h2, h3')) {
+      expect(el.className.split(/\s+/), el.outerHTML.slice(0, 60)).toContain('m-0');
+    }
+  });
+
+  it('shows a combined-load note on a day with no sessions, inside that day\'s card @spec(plan-presentation/one-card-per-day-in-week-order/combined-load-note-stays-with-its-day)', () => {
+    render(<PlanView record={record({}, { notes: { sat: 'Keep it light.' } })} />);
+    expect(dayItem('Saturday').querySelector('[data-slot="card"]')?.textContent).toContain('Keep it light.');
+    expect(within(dayItem('Saturday')).getByText('Rest day')).toBeTruthy();
+  });
+});

@@ -49,6 +49,24 @@ describe('usePlanRequest: waking state', () => {
     expect(result.current.state).toEqual({ phase: 'done', result: { ok: false, failure: { kind: 'timeout' } } });
   });
 
+  // Task 2.1: the views clear the last result when the athlete moves, so a failure never follows them.
+  it('returns to idle on reset(), dropping the last result', async () => {
+    const { result } = setup(100, 500, { error: 'coach_unavailable', message: 'x' });
+    act(() => { void result.current.submit(onboarding); });
+    await tick(100);
+    expect(result.current.state.phase).toBe('done');
+    act(() => result.current.reset());
+    expect(result.current.state).toEqual({ phase: 'idle' });
+  });
+
+  it('does not turn an idle state into "waking" when reset() is called before the 3 s are up', async () => {
+    const { result } = setup(60_000);
+    act(() => { void result.current.submit(onboarding); });
+    act(() => result.current.reset());
+    await tick(WAKING_AFTER_MS + 1000);
+    expect(result.current.state).toEqual({ phase: 'idle' });
+  });
+
   it('can be used again after a result', async () => {
     const { result } = setup(100);
     act(() => { void result.current.submit(onboarding); });

@@ -30,5 +30,11 @@ export function usePlanRequest(api: Api) {
     [api],
   );
 
-  return { state, submit };
+  // Back to idle, dropping the last result (a failure must not follow the athlete to another view).
+  const reset = useCallback(() => {
+    clearTimeout(timer.current);
+    setState({ phase: 'idle' });
+  }, []);
+
+  return { state, submit, reset };
 }

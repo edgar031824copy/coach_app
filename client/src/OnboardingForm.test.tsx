@@ -214,9 +214,43 @@ describe('OnboardingForm: pre-filled from a saved onboarding', () => {
     await user.click(submitButton());
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
+});
 
-  it('puts the cursor in the first field so the athlete can start editing', () => {
+// Task 2.2: the form no longer grabs focus by itself. It moves focus to a field only when that field has an error the
+// athlete has not seen yet: a pre-filled value that is not allowed, or a message from the server.
+describe('OnboardingForm: focus', () => {
+  it('moves no focus when it opens empty or pre-filled with valid values', () => {
+    setup();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('moves no focus for a valid pre-filled form (the view heading gets it instead) @spec(app-views/moving-between-views/focus-follows-the-view)', () => {
     setup({ initial: { ...base, runningDays: ['mon'] } });
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('focuses the first field with an error when it opens pre-filled with a value that is not allowed @spec(app-views/moving-between-views/focus-goes-to-the-first-error-when-the-form-opens-with-one)', () => {
+    setup({ initial: { ...base, existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 53 } });
+    expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i));
+  });
+
+  it('focuses the first invalid field in page order, not the goal, when several are invalid', () => {
+    setup({ initial: { ...base, goal: '', injuries: 'x'.repeat(3000) } });
     expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
+  });
+
+  it('focuses the first field named by a server error, in page order @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', () => {
+    setup({ serverFields: { injuries: 'Injuries must be text.', goal: 'Goal is required.' } });
+    expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
+  });
+
+  it('focuses the first day box when the server names a group of days @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', () => {
+    setup({ serverFields: { crossfitDays: 'crossfitDays lists a day more than once.' } });
+    expect(document.activeElement).toBe(within(screen.getByRole('group', { name: 'CrossFit days' })).getAllByRole('checkbox')[0]);
+  });
+
+  it('focuses nothing when the server names only a field this form has no place for', () => {
+    setup({ serverFields: { body: 'The request body must be a JSON object.' } });
+    expect(document.activeElement).toBe(document.body);
   });
 });

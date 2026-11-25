@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import type { Day, PlanRecord, Session } from 'shared';
 
 // The server checks that all seven days are present, not their order, so the view puts them in order itself.
@@ -10,12 +11,12 @@ const INTENSITY: Record<Session['intensity'], string> = { easy: 'Easy', moderate
 
 // A plan record, or a full plan response (which has the same fields and one more). Text from the plan is rendered as
 // text by React, never as markup. Layout and visual design are a later pass; this is the content and its structure.
-export function PlanView({ record }: { record: PlanRecord }) {
+export function PlanView({ record, headingRef }: { record: PlanRecord; headingRef?: Ref<HTMLHeadingElement> }) {
   const { plan, onboarding } = record;
   const byDay = new Map(plan.days.map((d) => [d.day, d]));
   return (
     <section aria-labelledby="plan-heading" className="plan">
-      <h2 id="plan-heading">Your plan</h2>
+      <h2 id="plan-heading" ref={headingRef} tabIndex={-1}>Your plan</h2>
       {onboarding.pastedPlanWeek !== null && <p className="plan-week">Week {onboarding.pastedPlanWeek} of your running plan</p>}
 
       {plan.safetyNote !== null && (

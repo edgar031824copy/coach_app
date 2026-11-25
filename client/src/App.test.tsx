@@ -366,3 +366,93 @@ describe('App: outcomes of a submit', () => {
     expect(week()).toBe('4');
   });
 });
+
+// Task 2.2: headings and focus. One h1 (the app name), one h2 per view (tabIndex -1 so it can take focus), h3 per day.
+describe('App: headings', () => {
+  it('has one level-1 heading, one level-2 heading per view, and a level-3 heading per day', async () => {
+    const { user } = await open(pastedRecord);
+    const levels = () => screen.getAllByRole('heading').filter((h) => !h.closest('[hidden]')).map((h) => `${h.tagName}:${h.textContent}`);
+    expect(levels().filter((h) => h.startsWith('H1'))).toEqual(['H1:Hybrid Coach']);
+    expect(levels().filter((h) => h.startsWith('H2'))).toEqual(['H2:Your plan']);
+    expect(levels().filter((h) => h.startsWith('H3'))).toHaveLength(7);
+    await user.click(newPlan());
+    expect(levels().filter((h) => h.startsWith('H2'))).toEqual(['H2:New plan']);
+    expect(screen.getByRole('heading', { level: 2, name: 'New plan' }).getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('makes the plan heading focusable by script only', async () => {
+    await open(pastedRecord);
+    expect(screen.getByRole('heading', { level: 2, name: 'Your plan' }).getAttribute('tabindex')).toBe('-1');
+  });
+});
+
+describe('App: focus', () => {
+  const heading = (name: string) => screen.getByRole('heading', { level: 2, name });
+
+  it('moves no focus when the page opens, with a saved plan or without @spec(app-views/start-state/opening-the-page-does-not-move-focus)', async () => {
+    await open(pastedRecord);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('moves no focus when the page opens on the empty form @spec(app-views/start-state/opening-the-page-does-not-move-focus)', async () => {
+    await open(null);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('puts focus on the heading of the view the athlete opens @spec(app-views/moving-between-views/focus-follows-the-view)', async () => {
+    const { user } = await open(pastedRecord);
+    await user.click(newPlan());
+    expect(document.activeElement).toBe(heading('New plan'));
+    await user.click(myPlan());
+    expect(document.activeElement).toBe(heading('Your plan'));
+    await user.click(nextWeek());
+    expect(document.activeElement).toBe(heading('New plan')); // week 4: nothing to fix, so the heading, not a field
+  });
+
+  it('puts focus on the first field with an error when "Plan next week" gives week 53, not on the heading @spec(app-views/moving-between-views/focus-goes-to-the-first-error-when-the-form-opens-with-one)', async () => {
+    const { user } = await open(planRecord({ existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 52 }));
+    await user.click(nextWeek());
+    expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i));
+    expect(document.activeElement).not.toBe(heading('New plan'));
+  });
+
+  it('puts focus on the plan heading when a submit succeeds @spec(app-views/outcomes-of-a-submit/success-shows-the-new-plan)', async () => {
+    const { user } = await open(pastedRecord);
+    await user.click(nextWeek());
+    await user.click(build());
+    await screen.findByRole('region', { name: 'Your plan' });
+    expect(document.activeElement).toBe(heading('Your plan'));
+  });
+
+  it('puts focus on the failure message when the failure names no field @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    expect(document.activeElement).toBe(await screen.findByRole('alert'));
+  });
+
+  it('puts focus on the first field a server error names, not on the message @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('validation_error', { fields: { goal: 'Goal is required from the server.' } }));
+    await user.click(nextWeek());
+    await user.click(build());
+    await screen.findByText('Goal is required from the server.');
+    expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
+  });
+
+  it('puts focus on the failure message when the server names only a field the form has no place for @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('validation_error', { fields: { body: 'The request body must be a JSON object.' } }));
+    await user.click(nextWeek());
+    await user.click(build());
+    expect(document.activeElement).toBe(await screen.findByRole('alert'));
+  });
+
+  it('puts focus back on the failure message after "Try again" fails again @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', async () => {
+    const { api, user } = await open(pastedRecord, async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const first = await screen.findByRole('alert');
+    await user.click(within(first).getByRole('button', { name: 'Try again' }));
+    expect(api.postPlan).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(screen.getByRole('alert'));
+  });
+});

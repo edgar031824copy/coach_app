@@ -29,6 +29,26 @@ const KEY_OF: Record<keyof Values, Key> = {
 
 const blank = (s: string) => s.trim() === '';
 
+// Page order of the error keys, and the element that takes focus for each (a group of days: its first box).
+const PAGE_ORDER: Key[] = ['goal', 'runningLevel', 'crossfitLevel', 'injuries', 'runningDays', 'crossfitDays', 'existingRunningPlan', 'pastedPlanWeek', 'weeklyTraining', 'targetEvent'];
+const FOCUS_ID: Record<Key, string> = {
+  goal: 'f-goal', runningLevel: 'f-runningLevel', crossfitLevel: 'f-crossfitLevel', injuries: 'f-injuries', runningDays: 'f-runningDays', crossfitDays: 'f-crossfitDays',
+  existingRunningPlan: 'f-existingRunningPlan', pastedPlanWeek: 'f-pastedPlanWeek', weeklyTraining: 'f-runningSessions', targetEvent: 'f-eventName',
+};
+// The field names this form has a place for; a server error for any other name has no field to focus.
+export const FORM_FIELD_KEYS: ReadonlySet<string> = new Set(PAGE_ORDER);
+
+// Focuses the first field, in page order, whose key is in `keys`. Returns whether one took focus.
+function focusFirstField(keys: ReadonlySet<string>): boolean {
+  for (const key of PAGE_ORDER) {
+    if (!keys.has(key)) continue;
+    const el = document.getElementById(FOCUS_ID[key]);
+    const target = el instanceof HTMLFieldSetElement ? el.querySelector('input') : el;
+    if (target instanceof HTMLElement) { target.focus(); return true; }
+  }
+  return false;
+}
+
 // A saved onboarding back into what the boxes hold.
 function toValues(o: Onboarding): Values {
   return {
@@ -81,13 +101,15 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
   const [touched, setTouched] = useState<Set<Key>>(() => new Set(initial ? Object.values(KEY_OF) : []));
   const [submitted, setSubmitted] = useState(false);
   const [edited, setEdited] = useState<Set<string>>(new Set()); // server messages the athlete has since edited away
-  useEffect(() => setEdited(new Set()), [serverFields]);
-  // A pre-filled form is for editing: bring it into view with the cursor in the first field.
+  // Focus is moved only to a field with an error the athlete has not seen yet; otherwise the view's heading gets it (App).
+  useEffect(() => {
+    setEdited(new Set());
+    if (serverFields !== NO_FIELDS) focusFirstField(new Set(Object.keys(serverFields)));
+  }, [serverFields]);
   useEffect(() => {
     if (!initial) return;
-    const first = document.getElementById('f-goal');
-    first?.focus();
-    first?.scrollIntoView?.({ block: 'center' });
+    const checked = validateOnboarding(toInput(toValues(initial)));
+    if (!checked.ok) focusFirstField(new Set(Object.keys(checked.fields)));
   }, [initial]);
 
   const result = validateOnboarding(toInput(values));
@@ -144,7 +166,7 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
   const days = (name: 'runningDays' | 'crossfitDays', legend: string): ReactNode => {
     const error = message(name);
     return (
-      <fieldset aria-invalid={error ? true : undefined}>
+      <fieldset id={`f-${name}`} aria-invalid={error ? true : undefined}>
         <legend>{legend}</legend>
         <div className="days">
           {DAYS.map(({ id, label }) => (

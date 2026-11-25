@@ -42,7 +42,9 @@ test.describe('on a phone, 360 by 740', () => {
   });
 
   test('the seven day cards run from Monday to Sunday down the page, each as wide as the others @spec(plan-presentation/one-card-per-day-in-week-order/days-in-week-order)', async ({ page }) => {
-    await mockSavedPlan(page, savedPlan());
+    const saved = savedPlan();
+    saved.plan.days.reverse(); // the plan stores its days Sunday to Monday; the view must still show Monday first
+    await mockSavedPlan(page, saved);
     await page.goto('/');
     const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const boxes = [];

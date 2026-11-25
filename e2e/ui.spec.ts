@@ -92,7 +92,8 @@ async function focusRings(page: Page, lastStop: string) {
   const stops: { name: string; ok: boolean; detail: string }[] = [];
   for (let i = 0; i < 80; i++) {
     await page.keyboard.press('Tab');
-    await page.waitForTimeout(250); // colors transition for 150 ms; read the settled values
+    // Colors transition for 150 ms (outside reduced motion): wait for every transition to end, then read the settled values.
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
     const stop = await page.evaluate(() => {
       const active = document.activeElement as HTMLElement;
       const drawn = active instanceof HTMLInputElement && (active.type === 'radio' || active.type === 'checkbox') ? (active.nextElementSibling as HTMLElement) : active;
@@ -102,21 +103,28 @@ async function focusRings(page: Page, lastStop: string) {
       const offset = parseFloat(cs.outlineOffset) > 0;
       let bg = 'rgba(0, 0, 0, 0)';
       for (let el: HTMLElement | null = offset ? drawn.parentElement : drawn; el; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') { bg = c; break; } }
+      const win = window as unknown as { __lastFocus?: Element };
+      const same = win.__lastFocus === active; // another inner stop of the same control (a date field's day, month, year, picker)
+      win.__lastFocus = active;
       return {
+        same,
         name: `${active.tagName.toLowerCase()}${active.id ? `#${active.id}` : ''} "${(active.getAttribute('aria-label') || active.textContent || active.closest('label')?.textContent || (active as HTMLInputElement).labels?.[0]?.textContent || '').trim().slice(0, 28)}"`,
         width: parseFloat(cs.outlineWidth), style: cs.outlineStyle, color: cs.outlineColor, bg,
       };
     });
     // A date field has inner stops (day, month, year, the picker icon): the first one is checked, and the browser draws the
-    // inner ones itself, so a repeated stop on the same element is part of the same control.
-    if (stops.at(-1)?.name === stop.name) continue;
-    stops.push({ name: stop.name, ok: stop.style !== 'none' && stop.width > 0 && stop.color !== stop.bg, detail: `${stop.style} ${stop.width}px ${stop.color} on ${stop.bg}` });
+    // inner ones itself, so another stop on the same element is part of the same control.
+    if (stop.same) continue;
+    // Every ring in this app is a solid outline of 2 px: the browser's own default ring (style `auto`, 1 px) would also be
+    // "visible", but it would mean a ring class was lost, so it does not count.
+    stops.push({ name: stop.name, ok: stop.style === 'solid' && stop.width >= 2 && stop.color !== stop.bg, detail: `${stop.style} ${stop.width}px ${stop.color} on ${stop.bg}` });
     if (stop.name.includes(lastStop)) break;
   }
   return stops;
 }
 
 test('every focus stop in the form view and the plan view shows a visible ring @spec(responsive-accessibility/keyboard-use/focus-is-visible)', async ({ page }) => {
+  test.slow(); // about 30 Tab presses through a long form; a slow CI runner gets three times the usual limit
   await mockSavedPlan(page, null);
   await page.goto('/');
   await expect(page.getByLabel('Goal')).toBeVisible();
@@ -124,6 +132,7 @@ test('every focus stop in the form view and the plan view shows a visible ring @
   await page.getByRole('heading', { level: 1 }).click(); // Tab starts from here, the top of the page
   const formStops = await focusRings(page, 'Build my plan');
   expect(formStops.length, 'the form has many stops').toBeGreaterThan(20);
+  expect(formStops.at(-1)?.name, 'the last stop of the form is its button').toContain('Build my plan');
   expect(formStops.filter((s) => !s.ok), JSON.stringify(formStops.filter((s) => !s.ok))).toEqual([]);
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });

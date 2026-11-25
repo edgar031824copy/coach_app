@@ -43,6 +43,7 @@ export async function mockSavedPlan(page: Page, saved: ReturnType<typeof savedPl
   await page.route('**/api/plan', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    if (page.isClosed()) return; // the test is over; nothing to answer
     return saved === 'fail' ? route.abort('failed') : json(route, 200, saved);
   });
 }
@@ -52,7 +53,7 @@ export async function mockPost(page: Page, answer: { status: number; body: unkno
   await page.route('**/api/plan', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     if (answer === 'network') return route.abort('failed');
-    if ('delayMs' in answer) { await new Promise((r) => setTimeout(r, answer.delayMs)); return route.abort('failed'); }
+    if ('delayMs' in answer) { await new Promise((r) => setTimeout(r, answer.delayMs)); if (page.isClosed()) return; return route.abort('failed'); }
     return json(route, answer.status, answer.body);
   });
 }

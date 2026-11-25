@@ -11,13 +11,20 @@ const setup = (props: Partial<Parameters<typeof OnboardingForm>[0]> = {}) => {
   return { onSubmit, user };
 };
 const day = (group: string, name: string) => within(screen.getByRole('group', { name: group })).getByRole('checkbox', { name });
+const level = (group: string, name: string) => within(screen.getByRole('group', { name: group })).getByRole('radio', { name }) as HTMLInputElement;
+// The optional parts are folded; the athlete opens one by pressing its title, as these tests do.
+const PLAN_PART = 'I already follow a running plan';
+const WEEK_PART = 'My usual week';
+const EVENT_PART = 'Target event';
+const part = (title: string) => screen.getByText(title, { selector: 'summary' }).closest('details') as HTMLDetailsElement;
+const openPart = async (user: ReturnType<typeof userEvent.setup>, title: string) => { if (!part(title).open) await user.click(screen.getByText(title, { selector: 'summary' })); };
 const submitButton = () => screen.getByRole('button', { name: /build my plan/i });
 
 // Fills the smallest valid form.
 async function fillValid(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/goal/i), 'Run a half marathon');
-  await user.selectOptions(screen.getByLabelText(/running level/i), 'intermediate');
-  await user.selectOptions(screen.getByLabelText(/crossfit level/i), 'beginner');
+  await user.click(level('Running level', 'Intermediate'));
+  await user.click(level('CrossFit level', 'Beginner'));
   await user.click(day('Running days', 'Mon'));
   await user.click(day('Running days', 'Wed'));
   await user.click(day('CrossFit days', 'Tue'));
@@ -58,6 +65,8 @@ describe('OnboardingForm: instant feedback', () => {
 
   it('checks the event date and the weekly numbers as they are typed', async () => {
     const { user } = setup();
+    await openPart(user, EVENT_PART);
+    await openPart(user, WEEK_PART);
     await user.type(screen.getByLabelText(/event name/i), 'City Half');
     await user.type(screen.getByLabelText(/event date/i), '2020-01-01');
     expect(screen.getByText('The event date cannot be in the past (UTC).')).toBeTruthy();
@@ -67,6 +76,7 @@ describe('OnboardingForm: instant feedback', () => {
 
   it('asks for the plan week only when a running plan is pasted', async () => {
     const { user } = setup();
+    await openPart(user, PLAN_PART);
     expect(screen.queryByLabelText(/week of your plan/i)).toBeNull();
     await user.type(screen.getByLabelText(/running plan/i), 'Mon 5 km easy');
     expect(screen.getByLabelText(/week of your plan/i)).toBeTruthy();
@@ -106,6 +116,7 @@ describe('OnboardingForm: submitting', () => {
   it('sends a trimmed pasted plan with its week, the weekly numbers and the target event when given', async () => {
     const { user, onSubmit } = setup();
     await fillValid(user);
+    for (const title of [PLAN_PART, WEEK_PART, EVENT_PART]) await openPart(user, title);
     await user.type(screen.getByLabelText(/running plan/i), '  Week 3: Mon 5 km easy  ');
     await user.type(screen.getByLabelText(/week of your plan/i), '3');
     await user.type(screen.getByLabelText(/running sessions per week/i), '3');
@@ -127,6 +138,7 @@ describe('OnboardingForm: submitting', () => {
   it('sends null for km when only the session counts are given (an empty box is not zero)', async () => {
     const { user, onSubmit } = setup();
     await fillValid(user);
+    await openPart(user, WEEK_PART);
     await user.type(screen.getByLabelText(/running sessions per week/i), '3');
     await user.type(screen.getByLabelText(/crossfit sessions per week/i), '2');
     await user.click(submitButton());
@@ -136,8 +148,9 @@ describe('OnboardingForm: submitting', () => {
   it('accepts a pasted plan instead of any training day', async () => {
     const { user, onSubmit } = setup();
     await user.type(screen.getByLabelText(/goal/i), 'Finish a 10k');
-    await user.selectOptions(screen.getByLabelText(/running level/i), 'beginner');
-    await user.selectOptions(screen.getByLabelText(/crossfit level/i), 'beginner');
+    await user.click(level('Running level', 'Beginner'));
+    await user.click(level('CrossFit level', 'Beginner'));
+    await openPart(user, PLAN_PART);
     await user.type(screen.getByLabelText(/running plan/i), 'Mon 5 km easy');
     await user.click(submitButton());
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ runningDays: [], crossfitDays: [], existingRunningPlan: 'Mon 5 km easy' }));
@@ -187,7 +200,7 @@ describe('OnboardingForm: pre-filled from a saved onboarding', () => {
   it('shows every saved answer, and submitting it unchanged sends the same onboarding', async () => {
     const { user, onSubmit } = setup({ initial: { ...saved, runningDays: [...saved.runningDays], crossfitDays: [...saved.crossfitDays] } });
     expect((screen.getByLabelText(/goal/i) as HTMLTextAreaElement).value).toBe('Finish a 10k');
-    expect((screen.getByLabelText(/running level/i) as HTMLSelectElement).value).toBe('intermediate');
+    expect(level('Running level', 'Intermediate').checked).toBe(true);
     expect((day('Running days', 'Fri') as HTMLInputElement).checked).toBe(true);
     expect((day('Running days', 'Tue') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText(/week of your plan/i) as HTMLInputElement).value).toBe('5');
@@ -252,5 +265,110 @@ describe('OnboardingForm: focus', () => {
   it('focuses nothing when the server names only a field this form has no place for', () => {
     setup({ serverFields: { body: 'The request body must be a JSON object.' } });
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+// Task 3.1: the form's layout. Fields, values, validation and submit are E1's; these check the new structure.
+describe('OnboardingForm: sections and folded optional parts', () => {
+  it('shows four sections under headings, with the pain or injury field always visible @spec(form-presentation/sections-and-folded-optional-parts/four-sections)', () => {
+    setup();
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Your goal', 'Your level', 'Your week', 'Pain or injury']);
+    const pain = screen.getByLabelText(/injuries or pain/i);
+    expect(pain.closest('details')).toBeNull(); // not folded away
+    const card = (heading: string) => screen.getByRole('heading', { level: 3, name: heading }).closest('[data-slot="card"]') as HTMLElement;
+    expect(card('Pain or injury').contains(pain)).toBe(true);
+    expect(card('Your goal').contains(screen.getByLabelText('Goal'))).toBe(true);
+    expect(card('Your level').contains(screen.getByRole('group', { name: 'Running level' }))).toBe(true);
+    expect(card('Your week').contains(screen.getByRole('group', { name: 'Running days' }))).toBe(true);
+  });
+
+  it('folds the three optional parts, and opening one shows its fields @spec(form-presentation/sections-and-folded-optional-parts/optional-parts-are-folded)', async () => {
+    const { user } = setup();
+    for (const title of [PLAN_PART, WEEK_PART, EVENT_PART]) expect(part(title).open, title).toBe(false);
+    expect(screen.getAllByText('Optional')).toHaveLength(3);
+    await user.click(screen.getByText(EVENT_PART, { selector: 'summary' }));
+    expect(part(EVENT_PART).open).toBe(true);
+    expect(within(part(EVENT_PART)).getByLabelText(/event name/i)).toBeTruthy();
+    expect(part(WEEK_PART).open).toBe(false);
+  });
+
+  it('still sends the values of a part the athlete filled and then closed @spec(form-presentation/sections-and-folded-optional-parts/folded-values-are-still-sent)', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await openPart(user, EVENT_PART);
+    await user.type(screen.getByLabelText(/event name/i), 'City Half');
+    await user.type(screen.getByLabelText(/event date/i), '2099-12-06');
+    await user.click(screen.getByText(EVENT_PART, { selector: 'summary' })); // close it
+    expect(part(EVENT_PART).open).toBe(false);
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ targetEvent: { name: 'City Half', date: '2099-12-06' } }));
+  });
+
+  it('opens the parts that hold a saved answer when the form is pre-filled, so a saved value is never hidden', () => {
+    setup({ initial: { ...base, runningDays: ['mon'], existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 3, targetEvent: { name: 'City Half', date: '2099-12-06' } } });
+    expect(part(PLAN_PART).open).toBe(true);
+    expect(part(EVENT_PART).open).toBe(true);
+    expect(part(WEEK_PART).open).toBe(false); // nothing saved there
+  });
+});
+
+describe('OnboardingForm: level choice', () => {
+  it('has a group per level with Beginner, Intermediate and Advanced, none selected on an empty form @spec(form-presentation/level-choice/no-level-on-an-empty-form)', () => {
+    setup();
+    for (const group of ['Running level', 'CrossFit level']) {
+      const radios = within(screen.getByRole('group', { name: group })).getAllByRole('radio') as HTMLInputElement[];
+      expect(radios.map((r) => r.closest('label')?.textContent)).toEqual(['Beginner', 'Intermediate', 'Advanced']);
+      expect(radios.some((r) => r.checked)).toBe(false);
+    }
+  });
+
+  it('selects only the chosen level and sends it @spec(form-presentation/level-choice/choosing-a-level)', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await user.click(level('Running level', 'Advanced'));
+    expect(level('Running level', 'Advanced').checked).toBe(true);
+    expect(level('Running level', 'Intermediate').checked).toBe(false);
+    expect(level('CrossFit level', 'Advanced').checked).toBe(false); // the other group is separate
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ runningLevel: 'advanced', crossfitLevel: 'beginner' }));
+  });
+
+  it('asks for a missing level on that control and does not submit @spec(form-presentation/level-choice/level-is-required)', async () => {
+    const { user, onSubmit } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'Run a half marathon');
+    await user.click(level('CrossFit level', 'Beginner'));
+    await user.click(day('Running days', 'Mon'));
+    await user.click(submitButton());
+    expect(within(screen.getByRole('group', { name: 'Running level' })).getByText('Choose your running level.')).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('OnboardingForm: day buttons', () => {
+  it('has seven toggles per group, Monday to Sunday', () => {
+    setup();
+    for (const group of ['Running days', 'CrossFit days']) {
+      expect(within(screen.getByRole('group', { name: group })).getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    }
+  });
+
+  it('turns a day on with the first press and off with the second @spec(form-presentation/day-buttons/toggle-a-day)', async () => {
+    const { user } = setup();
+    const tue = () => day('Running days', 'Tue') as HTMLInputElement;
+    await user.click(tue());
+    expect(tue().checked).toBe(true);
+    expect((day('CrossFit days', 'Tue') as HTMLInputElement).checked).toBe(false);
+    await user.click(tue());
+    expect(tue().checked).toBe(false);
+  });
+
+  it('asks for a training day or a pasted plan when neither is given, and does not submit @spec(form-presentation/day-buttons/no-day-and-no-pasted-plan)', async () => {
+    const { user, onSubmit } = setup();
+    await user.type(screen.getByLabelText('Goal'), 'Run a half marathon');
+    await user.click(level('Running level', 'Beginner'));
+    await user.click(level('CrossFit level', 'Beginner'));
+    await user.click(submitButton());
+    expect(screen.getAllByText('Pick at least one training day, or paste a running plan.')).toHaveLength(2);
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

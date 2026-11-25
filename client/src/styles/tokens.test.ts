@@ -24,15 +24,13 @@ export function findRawColors(text: string): string[] {
   return text.match(RAW_COLOR) ?? [];
 }
 
-// Source files of the screens and components: everything under `src` except tests, the token file and the legacy
-// stylesheet (see LEGACY below).
-const LEGACY = ['styles.css']; // E1's plain stylesheet; it goes away when the views are rebuilt (tasks 2.3 and 3.1).
+// Source files of the screens and components: everything under `src` except tests and the token file.
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return sourceFiles(path);
     if (!/\.(tsx?|css)$/.test(name) || /\.test\.tsx?$/.test(name)) return [];
-    return path === TOKEN_FILE || LEGACY.includes(relative(SRC, path)) ? [] : [path];
+    return path === TOKEN_FILE ? [] : [path];
   });
 }
 

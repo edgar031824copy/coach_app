@@ -15,8 +15,9 @@ const day = (page: Page, name: string) => page.getByRole('listitem', { name });
 async function buildFirstPlan(page: Page, paste: string) {
   await page.goto('/');
   await page.getByLabel('Goal').fill('Finish a 10k');
-  await page.getByLabel('Running level').selectOption('intermediate');
-  await page.getByLabel('CrossFit level').selectOption('intermediate');
+  await page.getByRole('group', { name: 'Running level' }).getByLabel('Intermediate').check();
+  await page.getByRole('group', { name: 'CrossFit level' }).getByLabel('Intermediate').check();
+  await page.getByText('I already follow a running plan').click(); // the optional parts are folded
   await page.getByLabel(/Your running plan/).fill(paste);
   await page.getByRole('group', { name: 'CrossFit days' }).getByRole('checkbox', { name: 'Fri' }).check();
   await page.getByRole('button', { name: 'Build my plan' }).click();

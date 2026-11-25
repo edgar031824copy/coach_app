@@ -1,6 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { validateOnboarding, type Day, type Onboarding } from 'shared';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
+const LEVELS = [{ id: 'beginner', label: 'Beginner' }, { id: 'intermediate', label: 'Intermediate' }, { id: 'advanced', label: 'Advanced' }];
 const DAYS: { id: Day; label: string }[] = [
   { id: 'mon', label: 'Mon' }, { id: 'tue', label: 'Tue' }, { id: 'wed', label: 'Wed' }, { id: 'thu', label: 'Thu' },
   { id: 'fri', label: 'Fri' }, { id: 'sat', label: 'Sat' }, { id: 'sun', label: 'Sun' },
@@ -86,6 +92,8 @@ function toInput(v: Values): unknown {
   };
 }
 
+type PartId = 'plan' | 'week' | 'event';
+
 export interface OnboardingFormProps {
   onSubmit: (onboarding: Onboarding) => void;
   initial?: Onboarding; // pre-fill ("Plan next week"); every pre-filled value is checked at once, so a bad one shows its error
@@ -101,6 +109,15 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
   const [touched, setTouched] = useState<Set<Key>>(() => new Set(initial ? Object.values(KEY_OF) : []));
   const [submitted, setSubmitted] = useState(false);
   const [edited, setEdited] = useState<Set<string>>(new Set()); // server messages the athlete has since edited away
+  // The optional parts start folded. A pre-filled form opens the parts that hold a saved answer, so none is hidden.
+  const [open, setOpen] = useState<Record<PartId, boolean>>(() => {
+    const v = initial ? toValues(initial) : EMPTY;
+    return {
+      plan: !blank(v.existingRunningPlan),
+      week: !(blank(v.runningSessions) && blank(v.crossfitSessions) && blank(v.runningKm)),
+      event: !(blank(v.eventName) && blank(v.eventDate)),
+    };
+  });
   // Focus is moved only to a field with an error the athlete has not seen yet; otherwise the view's heading gets it (App).
   useEffect(() => {
     setEdited(new Set());
@@ -130,6 +147,8 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
   const toggleDay = (name: 'runningDays' | 'crossfitDays', day: Day) =>
     change(name, values[name].includes(day) ? values[name].filter((d) => d !== day) : [...values[name], day]);
 
+  const errorLine = (id: string, error: string) => <p id={id} className="m-0 mt-1.5 text-sm font-semibold text-error">{error}</p>;
+
   const text = (name: keyof Values, label: string, props: { multiline?: boolean; type?: string; grouped?: boolean } = {}) => {
     const key = KEY_OF[name];
     const error = props.grouped ? undefined : message(key); // a grouped input shares one message, shown under its group
@@ -139,46 +158,88 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
       onChange: (e: { target: { value: string } }) => change(name, e.target.value as never), onBlur: () => touch(name),
     };
     return (
-      <div className="field">
-        <label htmlFor={id}>{label}</label>
-        {props.multiline ? <textarea rows={3} {...common} /> : <input type={props.type ?? 'text'} {...common} />}
-        {error && <p id={`${id}-error`} className="error">{error}</p>}
+      <div className="grid gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        {props.multiline ? <Textarea {...common} /> : <Input type={props.type ?? 'text'} {...common} />}
+        {error && errorLine(`${id}-error`, error)}
       </div>
     );
   };
 
+  // A group of native radios drawn as a segmented control: the input covers its label and the span shows the state.
   const level = (name: 'runningLevel' | 'crossfitLevel', label: string) => {
     const error = message(name);
     return (
-      <div className="field">
-        <label htmlFor={`f-${name}`}>{label}</label>
-        <select id={`f-${name}`} value={values[name]} aria-invalid={error ? true : undefined} onChange={(e) => change(name, e.target.value)} onBlur={() => touch(name)}>
-          <option value="">Choose…</option>
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="advanced">Advanced</option>
-        </select>
-        {error && <p className="error">{error}</p>}
-      </div>
-    );
-  };
-
-  const days = (name: 'runningDays' | 'crossfitDays', legend: string): ReactNode => {
-    const error = message(name);
-    return (
-      <fieldset id={`f-${name}`} aria-invalid={error ? true : undefined}>
-        <legend>{legend}</legend>
-        <div className="days">
-          {DAYS.map(({ id, label }) => (
-            <label key={id} className="day">
-              <input type="checkbox" checked={values[name].includes(id)} onChange={() => toggleDay(name, id)} /> {label}
+      <fieldset id={`f-${name}`} aria-invalid={error ? true : undefined} aria-describedby={error ? `f-${name}-error` : undefined} className="m-0 min-w-0 border-0 p-0">
+        <legend className="p-0 text-sm font-semibold">{label}</legend>
+        <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1">
+          {LEVELS.map((option) => (
+            <label key={option.id} className="relative font-semibold">
+              <input
+                type="radio" name={name} value={option.id} checked={values[name] === option.id}
+                onChange={() => change(name, option.id)} onBlur={() => touch(name)}
+                className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+              />
+              <span className="grid h-11 pointer-fine:h-9 place-items-center rounded-md text-base text-muted-foreground peer-checked:bg-card peer-checked:text-foreground peer-checked:shadow-card peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+                {option.label}
+              </span>
             </label>
           ))}
         </div>
-        {error && <p className="error">{error}</p>}
+        {error && errorLine(`f-${name}-error`, error)}
       </fieldset>
     );
   };
+
+  // Seven native checkboxes drawn as toggle buttons.
+  const days = (name: 'runningDays' | 'crossfitDays', legend: string): ReactNode => {
+    const error = message(name);
+    return (
+      <fieldset id={`f-${name}`} aria-invalid={error ? true : undefined} aria-describedby={error ? `f-${name}-error` : undefined} className="m-0 min-w-0 border-0 p-0">
+        <legend className="p-0 text-sm font-semibold">{legend}</legend>
+        <div className="mt-2 grid grid-cols-7 gap-1.5">
+          {DAYS.map(({ id, label }) => (
+            <label key={id} className="relative font-semibold">
+              <input
+                type="checkbox" checked={values[name].includes(id)} onChange={() => toggleDay(name, id)}
+                className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0"
+              />
+              <span className="grid h-11 pointer-fine:h-9 min-w-6 place-items-center rounded-md border border-border bg-card text-sm peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
+        {error && errorLine(`f-${name}-error`, error)}
+      </fieldset>
+    );
+  };
+
+  const section = (id: string, title: string, hint: string, children: ReactNode) => (
+    <Card className="grid gap-4">
+      <div>
+        <h3 id={id} className="m-0 text-lg font-bold">{title}</h3>
+        <p className="m-0 mt-0.5 text-sm text-muted-foreground">{hint}</p>
+      </div>
+      {children}
+    </Card>
+  );
+
+  // A folded optional part. The summary's click is handled here, so the state is the single source of whether it is
+  // open (the fields stay mounted and keep their values while it is closed).
+  const part = (id: PartId, title: string, children: ReactNode) => (
+    <details open={open[id]} className="rounded-lg border border-border bg-card shadow-card">
+      <summary
+        onClick={(e) => { e.preventDefault(); setOpen((o) => ({ ...o, [id]: !o[id] })); }}
+        className="flex min-h-13 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
+      >
+        {title}
+        <span className="ml-auto text-sm font-medium text-muted-foreground">Optional</span>
+        <span aria-hidden="true" className="w-4 text-center text-xl text-muted-foreground">{open[id] ? '–' : '+'}</span>
+      </summary>
+      <div className="grid gap-4 px-4 pb-4">{children}</div>
+    </details>
+  );
 
   const pasted = !blank(values.existingRunningPlan);
   const weeklyError = message('weeklyTraining');
@@ -187,35 +248,42 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
   return (
     <form
       noValidate
+      className="grid gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         setSubmitted(true);
         if (result.ok) onSubmit(result.value);
       }}
     >
-      {text('goal', 'Goal', { multiline: true })}
-      {level('runningLevel', 'Running level')}
-      {level('crossfitLevel', 'CrossFit level')}
-      {text('injuries', 'Injuries or pain (leave empty if none)', { multiline: true })}
-      {days('runningDays', 'Running days')}
-      {days('crossfitDays', 'CrossFit days')}
-      {text('existingRunningPlan', 'Your running plan (optional: paste it and the coach keeps your sessions)', { multiline: true })}
-      {pasted && text('pastedPlanWeek', 'Week of your plan to use (default 1)', { type: 'number' })}
-      <fieldset aria-invalid={weeklyError ? true : undefined}>
-        <legend>Your usual week (optional)</legend>
+      {section('sec-goal', 'Your goal', 'What do you want to achieve?', text('goal', 'Goal', { multiline: true }))}
+      {section('sec-level', 'Your level', 'Be honest, it sets how hard the plan is.', <>
+        {level('runningLevel', 'Running level')}
+        {level('crossfitLevel', 'CrossFit level')}
+      </>)}
+      {section('sec-week', 'Your week', 'Pick every day you can train. Both can share a day.', <>
+        {days('runningDays', 'Running days')}
+        {days('crossfitDays', 'CrossFit days')}
+      </>)}
+      {section('sec-pain', 'Pain or injury', 'Leave empty if none. If you have any, say where and when.', text('injuries', 'Injuries or pain (leave empty if none)', { multiline: true }))}
+      {part('plan', 'I already follow a running plan', <>
+        {text('existingRunningPlan', 'Your running plan (optional: paste it and the coach keeps your sessions)', { multiline: true })}
+        {pasted && text('pastedPlanWeek', 'Week of your plan to use (default 1)', { type: 'number' })}
+      </>)}
+      {part('week', 'My usual week', <fieldset aria-invalid={weeklyError ? true : undefined} className="m-0 grid min-w-0 gap-4 border-0 p-0">
+        <legend className="sr-only">Your usual week</legend>
         {text('runningSessions', 'Running sessions per week', { type: 'number', grouped: true })}
         {text('crossfitSessions', 'CrossFit sessions per week', { type: 'number', grouped: true })}
         {text('runningKm', 'Running km per week', { type: 'number', grouped: true })}
-        {weeklyError && <p className="error">{weeklyError}</p>}
-      </fieldset>
-      <fieldset aria-invalid={eventError ? true : undefined}>
-        <legend>Target event (optional)</legend>
+        {weeklyError && errorLine('f-weeklyTraining-error', weeklyError)}
+      </fieldset>)}
+      {part('event', 'Target event', <fieldset aria-invalid={eventError ? true : undefined} className="m-0 grid min-w-0 gap-4 border-0 p-0">
+        <legend className="sr-only">Your target event</legend>
         {text('eventName', 'Event name', { grouped: true })}
         {text('eventDate', 'Event date', { type: 'date', grouped: true })}
-        {eventError && <p className="error">{eventError}</p>}
-      </fieldset>
-      {unplaced.map(([k, m]) => <p key={k} className="error">{m}</p>)}
-      <button type="submit" disabled={busy}>Build my plan</button>
+        {eventError && errorLine('f-targetEvent-error', eventError)}
+      </fieldset>)}
+      {unplaced.map(([k, m]) => errorLine(`f-${k}-error`, m))}
+      <Button type="submit" disabled={busy} className="w-full">Build my plan</Button>
     </form>
   );
 }

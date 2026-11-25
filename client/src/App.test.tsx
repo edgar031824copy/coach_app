@@ -558,3 +558,20 @@ describe('App: review fixes', () => {
     expect(classes).toEqual(expect.arrayContaining(['border-border', 'bg-card', 'h-11', 'pointer-fine:h-9']));
   });
 });
+
+describe('App: week 53 after Plan next week', () => {
+  it('opens the form with week 53, its error and focus on that field, and lets the athlete fix it @spec(form-presentation/same-validation-and-behavior-as-e1/week-53-after-plan-next-week)', async () => {
+    const { api, user } = await open(planRecord({ existingRunningPlan: 'Mon 5 km', pastedPlanWeek: 52 }));
+    await user.click(nextWeek());
+    expect(week()).toBe('53');
+    expect(screen.getByText('The plan week must be a whole number from 1 to 52.')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText(/week of your plan/i));
+    expect(screen.getByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    // the value is editable before submitting, and the error goes once it is fixed
+    await user.clear(screen.getByLabelText(/week of your plan/i));
+    await user.type(screen.getByLabelText(/week of your plan/i), '1');
+    expect(screen.queryByText('The plan week must be a whole number from 1 to 52.')).toBeNull();
+    await user.click(build());
+    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 1 }));
+  });
+});

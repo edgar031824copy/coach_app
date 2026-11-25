@@ -32,13 +32,13 @@ async function fillValid(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('OnboardingForm: instant feedback', () => {
-  it('shows no error before the athlete has touched anything', () => {
+  it('shows no error before the athlete has touched anything @spec(form-presentation/same-validation-and-behavior-as-e1/no-message-on-an-untouched-field)', () => {
     setup();
     expect(screen.queryByText(/is required/i)).toBeNull();
     expect(screen.getByLabelText(/goal/i).getAttribute('aria-invalid')).not.toBe('true');
   });
 
-  it('shows the message for an empty goal as soon as the field is left, before any submit', async () => {
+  it('shows the message for an empty goal as soon as the field is left, before any submit @spec(form-presentation/same-validation-and-behavior-as-e1/instant-message-after-leaving-a-field)', async () => {
     const { user, onSubmit } = setup();
     await user.click(screen.getByLabelText(/goal/i));
     await user.tab();
@@ -164,7 +164,7 @@ describe('OnboardingForm: submitting', () => {
 });
 
 describe('OnboardingForm: server field errors', () => {
-  it('shows each server message next to its own field', async () => {
+  it('shows each server message next to its own field @spec(form-presentation/same-validation-and-behavior-as-e1/server-field-error-on-its-field)', async () => {
     setup({ serverFields: { goal: 'Goal is required.', runningDays: 'runningDays lists a day more than once.', targetEvent: 'The event date cannot be in the past (UTC).' } });
     expect(within(screen.getByLabelText(/goal/i).closest('div')!).getByText('Goal is required.')).toBeTruthy();
     expect(within(screen.getByRole('group', { name: 'Running days' })).getByText('runningDays lists a day more than once.')).toBeTruthy();
@@ -217,7 +217,7 @@ describe('OnboardingForm: pre-filled from a saved onboarding', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ existingRunningPlan: null, pastedPlanWeek: null, weeklyTraining: null, targetEvent: null }));
   });
 
-  it('shows a field error at once for a pre-filled value that is not allowed, such as week 53, and lets the athlete edit it @spec(plan-storage/plan-next-week/week-past-the-maximum)', async () => {
+  it('shows a field error at once for a pre-filled value that is not allowed, such as week 53, and lets the athlete edit it @spec(plan-storage/plan-next-week/week-past-the-maximum) @spec(form-presentation/same-validation-and-behavior-as-e1/week-53-after-plan-next-week)', async () => {
     const { user, onSubmit } = setup({ initial: { ...saved, pastedPlanWeek: 53, runningDays: ['mon'], crossfitDays: [] } });
     expect(screen.getByText('The plan week must be a whole number from 1 to 52.')).toBeTruthy();
     await user.click(submitButton());
@@ -548,5 +548,66 @@ describe('OnboardingForm: a folded part with an error is never hidden', () => {
     await fillValid(user);
     await user.click(submitButton());
     for (const title of [PLAN_PART, WEEK_PART, EVENT_PART]) expect(part(title).open, title).toBe(false);
+  });
+});
+
+// Task 3.3: the E1 validation and focus behavior on the new markup.
+describe('OnboardingForm: focus on the first invalid field when submitting', () => {
+  const firstRunningDay = () => within(screen.getByRole('group', { name: 'Running days' })).getAllByRole('checkbox')[0] as HTMLElement;
+  const rows: { name: string; fill: (user: ReturnType<typeof userEvent.setup>) => Promise<void>; target: () => Element }[] = [
+    { name: 'the goal when nothing is filled', fill: async () => {}, target: () => screen.getByLabelText('Goal') },
+    { name: 'the running level once the goal is filled', fill: async (u) => { await u.type(screen.getByLabelText('Goal'), 'Run'); }, target: () => level('Running level', 'Beginner') },
+    { name: 'the CrossFit level once the running level is chosen', fill: async (u) => { await u.type(screen.getByLabelText('Goal'), 'Run'); await u.click(level('Running level', 'Beginner')); }, target: () => level('CrossFit level', 'Beginner') },
+    { name: 'the first running day once the goal and both levels are chosen', fill: async (u) => { await u.type(screen.getByLabelText('Goal'), 'Run'); await u.click(level('Running level', 'Beginner')); await u.click(level('CrossFit level', 'Beginner')); }, target: firstRunningDay },
+  ];
+
+  it.each(rows)('moves focus to $name, and sends nothing @spec(form-presentation/same-validation-and-behavior-as-e1/focus-on-the-first-invalid-field)', async ({ fill, target }) => {
+    const { user, onSubmit } = setup();
+    await fill(user);
+    await user.click(submitButton());
+    expect(document.activeElement).toBe(target());
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('moves focus again on a second submit after the athlete has gone elsewhere @spec(form-presentation/same-validation-and-behavior-as-e1/focus-on-the-first-invalid-field)', async () => {
+    const { user } = setup();
+    await user.click(submitButton());
+    expect(document.activeElement).toBe(screen.getByLabelText('Goal'));
+    await user.click(screen.getByLabelText(/injuries or pain/i));
+    await user.click(submitButton());
+    expect(document.activeElement).toBe(screen.getByLabelText('Goal'));
+  });
+
+  it('leaves focus alone when the form is valid and sends it', async () => {
+    const { user, onSubmit } = setup();
+    await fillValid(user);
+    await user.click(submitButton());
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(submitButton());
+  });
+});
+
+describe('OnboardingForm: every error shows words', () => {
+  it('gives each invalid control a visible message that names the problem, not only a color or an icon @spec(responsive-accessibility/contrast-and-signals/errors-and-the-safety-note-carry-text)', async () => {
+    const { user } = setup();
+    await user.click(submitButton());
+    const invalid = Array.from(document.querySelectorAll('[aria-invalid="true"]'));
+    expect(invalid.length).toBeGreaterThanOrEqual(4); // goal, both levels, the days
+    for (const el of invalid) {
+      const ids = (el.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean);
+      expect(ids.length, el.outerHTML.slice(0, 80)).toBeGreaterThan(0);
+      for (const id of ids) {
+        const message = document.getElementById(id);
+        expect(message?.textContent?.trim().length, id).toBeGreaterThan(10);
+        expect(message?.className).toContain('text-error');
+      }
+    }
+  });
+
+  it('does the same for a message that comes from the server @spec(responsive-accessibility/contrast-and-signals/errors-and-the-safety-note-carry-text)', () => {
+    setup({ serverFields: { goal: 'Goal is required from the server.' } });
+    const goal = screen.getByLabelText('Goal');
+    expect(goal.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(goal.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Goal is required from the server.');
   });
 });

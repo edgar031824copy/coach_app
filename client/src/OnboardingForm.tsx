@@ -253,7 +253,7 @@ export function OnboardingForm({ onSubmit, initial, busy = false, serverFields =
     <details open={open[id]} className="rounded-lg border border-border bg-card shadow-card">
       <summary
         onClick={(e) => { e.preventDefault(); setOpen((o) => ({ ...o, [id]: !o[id] })); }}
-        className="flex min-h-13 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
+        className="flex min-h-13 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
       >
         {title}
         <span className="ml-auto text-sm font-medium text-muted-foreground">Optional</span>

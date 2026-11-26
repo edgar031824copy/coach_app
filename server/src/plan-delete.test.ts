@@ -90,7 +90,9 @@ describe('DELETE /api/plan/:id', () => {
     expect((await h.del('9007199254740991')).status).toBe(404); // a 404, not a 400 and not a 500
   });
 
-  it('answers 204 to one of two simultaneous deletions and 404 to the other @spec(plan-deletion/deleting-a-plan/two-deletions-at-once)', async () => {
+  // These two arrive together at the app but share one database connection, so they run in turn; the true concurrent
+  // case (two connections) is tested in db/plan-week.test.ts, where the scenario is tagged.
+  it('answers 204 to the first of two deletions fired together and 404 to the second', async () => {
     const { coach } = setup();
     h = await appHarness({ coach });
     const keep = await make();

@@ -55,7 +55,7 @@ export const PlanRecordSchema = z.object({
   plan: PlanSchema,
   onboarding: OnboardingSchema,
   createdAt: z.string(),
-  weekStart: z.string(), // the Monday of the week the plan is for, YYYY-MM-DD
+  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // the Monday of the week the plan is for, YYYY-MM-DD
 });
 
 export const PlanResponseSchema = PlanRecordSchema.extend({ remainingCallsToday: z.number().int() });

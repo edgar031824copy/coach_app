@@ -91,9 +91,10 @@ describe('plan store: the week', () => {
     expect((await store.latest())?.weekStart).toBe(WEEK);
   });
 
-  it.each(['America/Los_Angeles', 'Pacific/Auckland', 'Asia/Kolkata', 'UTC'])('reads the week as the same date when the server runs in %s @spec(plan-week/every-plan-has-a-week/the-date-does-not-move-with-the-servers-time-zone)', async (tz) => {
+  it.each([['America/Los_Angeles', 480], ['Pacific/Auckland', -780], ['Asia/Kolkata', -330], ['UTC', 0]])('reads the week as the same date when the server runs in %s @spec(plan-week/every-plan-has-a-week/the-date-does-not-move-with-the-servers-time-zone)', async (tz, offsetMinutes) => {
     const store = createPlanStore(db.client);
     process.env.TZ = tz;
+    expect(new Date(2026, 10, 23).getTimezoneOffset(), 'the time zone really changed in this process').toBe(offsetMinutes);
     await store.save(planFixture, onboardingFixture, WEEK);
     expect((await store.latest())?.weekStart).toBe(WEEK);
     await store.save(planFixture, onboardingFixture, '2026-12-28'); // a year-end week
@@ -139,7 +140,7 @@ describe('plan store: delete', () => {
     expect(await store.latest()).toBeNull();
   });
 
-  it('lets exactly one of two simultaneous deletions win', async () => {
+  it('lets exactly one of two simultaneous deletions win, on two separate connections @spec(plan-deletion/deleting-a-plan/two-deletions-at-once)', async () => {
     const store = createPlanStore(db.client);
     const only = await store.save(planFixture, onboardingFixture, WEEK);
     const pool = db.pool(2);

@@ -64,6 +64,10 @@ describe('plan week', () => {
     expect(PlanResponseSchema.safeParse({ ...withoutWeek, remainingCallsToday: 1 }).success).toBe(false);
     expect(PlanRecordSchema.parse(record).weekStart).toBe('2026-11-02');
   });
+
+  it('refuses a weekStart that is not a YYYY-MM-DD date', () => {
+    for (const bad of ['', 'next monday', '2026-11-23T00:00:00Z', '23/11/2026']) expect(PlanRecordSchema.safeParse({ ...record, weekStart: bad }).success, bad).toBe(false);
+  });
 });
 
 // Task 1.4 (coach-plan-week-and-delete): a plan that is not stored has its own error code.

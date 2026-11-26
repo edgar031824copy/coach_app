@@ -1,4 +1,4 @@
-import { CoachResponseSchema, mondayOf, todayUtc, type ApiError, type Onboarding, type PlanResponse } from 'shared';
+import { CoachResponseSchema, type ApiError, type Onboarding, type PlanResponse } from 'shared';
 import { CoachOutputError, type CoachClient } from './coach/types.js';
 import type { PlanStore } from './db/plan-store.js';
 import { logError } from './log.js';
@@ -33,9 +33,8 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 // validate (done by the caller) -> reserve a cap slot -> call the coach -> validate the response -> save -> respond.
 // Failure mapping (specs/plan-generation, distinct failure outcomes): nothing is saved on any failure, and a slot
 // reserved before a failure stays counted. Log lines carry error names only, never the athlete's text or a plan.
-export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding, weekStart?: string): Promise<Outcome> {
+export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding, week: string): Promise<Outcome> {
   const now = deps.now ?? (() => new Date());
-  const week = weekStart ?? mondayOf(todayUtc(now())); // the route passes the validated week (task 1.3); absent means this week
 
   // 1. Reserve a slot before spending anything. A failing reservation spends nothing and counts nothing.
   let calls: number | null;

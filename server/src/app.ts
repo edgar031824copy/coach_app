@@ -2,7 +2,7 @@ import express, { type ErrorRequestHandler } from 'express';
 import type { ApiError } from 'shared';
 import { generatePlan, type GenerateDeps } from './generate-plan.js';
 import { logError } from './log.js';
-import { validateOnboarding } from 'shared';
+import { todayUtc, validateOnboarding, validateWeekStart } from 'shared';
 
 export type AppDeps = GenerateDeps & { clientOrigin: string };
 
@@ -64,17 +64,21 @@ export function createApp(deps?: AppDeps) {
 
   app.post('/api/plan', express.json({ limit: BODY_LIMIT }), (req, res, next) => {
     const result = validateOnboarding(req.body);
-    if (!result.ok) {
+    // The week is not part of the onboarding: it is read beside it. Only an absent key means "this week"; the clock is the
+    // injected one, as for the cap and the coach.
+    const raw: Record<string, unknown> = typeof req.body === 'object' && req.body !== null && !Array.isArray(req.body) ? req.body : {};
+    const week = validateWeekStart('weekStart' in raw ? raw.weekStart : undefined, todayUtc((deps?.now ?? (() => new Date()))()));
+    if (!result.ok || !week.ok) {
       return sendError(res, 400, {
         error: 'validation_error',
         message: 'Some answers need fixing.',
-        fields: result.fields,
+        fields: { ...(result.ok ? {} : result.fields), ...(week.ok ? {} : { weekStart: week.message }) },
       });
     }
     if (!deps) {
       return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' }); // wired in task 5.4
     }
-    generatePlan(deps, result.value)
+    generatePlan(deps, result.value, week.value)
       .then((outcome) => res.status(outcome.status).json(outcome.body))
       .catch(next); // also catches a failure while sending, so it never becomes an unhandled rejection
   });

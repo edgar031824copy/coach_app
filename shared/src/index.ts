@@ -86,3 +86,4 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 // The onboarding rules live here, not in the server, so the form and the API check the same thing (task 6.2).
 export * from './onboarding.js';
+export * from './week.js';

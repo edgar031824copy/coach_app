@@ -709,7 +709,7 @@ describe('App: a refused week', () => {
 });
 
 // Task 2.4 (coach-plan-week-and-delete): the button and its confirmation, as the App wires them. The behaviour of the
-// confirmation itself (focus, the half second, Cancel) is in PlanActions.test.tsx.
+// confirmation itself (focus, the half second, Cancel) is in PlanDeletion.test.tsx.
 describe('App: the delete button', () => {
   const deleteButton = () => screen.getByRole('button', { name: 'Delete this plan' });
 

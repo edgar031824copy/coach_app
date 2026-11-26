@@ -17,7 +17,7 @@ The system SHALL save a plan together with the onboarding it was made from only 
 - **THEN** nothing is saved
 
 ### Requirement: Reload without a coach call
-`GET /api/plan` SHALL return the latest saved plan record (the plan, its onboarding, and when it was created) or `null`, and SHALL NOT call the coach. The latest plan is the one with the highest creation time, ordered by id when times are equal.
+`GET /api/plan` SHALL return the latest saved plan record (the plan, its onboarding, the week it is for, and when it was created) or `null`, and SHALL NOT call the coach. The latest plan is the one with the highest creation time, ordered by id when times are equal.
 
 #### Scenario: Reload shows the same plan
 - **WHEN** the page is reloaded and a plan exists
@@ -30,6 +30,10 @@ The system SHALL save a plan together with the onboarding it was made from only 
 #### Scenario: Latest plan wins
 - **WHEN** several plans are saved
 - **THEN** the one with the highest creation time is returned, and when creation times are equal, the one with the highest id
+
+#### Scenario: Record carries its week
+- **WHEN** a plan exists
+- **THEN** `GET /api/plan` returns its plan, its onboarding, its creation time and its `weekStart`
 
 ### Requirement: Day-by-day view
 The system SHALL show the plan's seven days in order mon to sun, each with its sessions and, when present, its combined-load note. A day with no sessions SHALL be shown as a rest day, and a plan made from a pasted plan SHALL show its week number.

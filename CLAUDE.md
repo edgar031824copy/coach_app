@@ -8,8 +8,8 @@ A coach for hybrid athletes (running + CrossFit). It builds a combined training 
 ## Status
 
 - Harness: **built.** CI, branch protection, reviewer agents, hooks and deny rules (`.claude/settings.json`), `scripts/phase`, `scripts/trace`, the deploy workflow (`.github/workflows/deploy.yml`), Playwright `e2e/` and the `evals/` runner (status legend in `docs/workflow.md`).
-- Code: epic E1 (`coach-onboarding-first-plan`) is built, deployed and archived (PRD 1.8 on `master`). Its 38 requirements are in `openspec/specs/`.
-- Active change: none. Next: the E1 retro, then spike X4 and epic E1b; E1c (plan quality) follows. State in `docs/.phase`.
+- Code: epic E1 (`coach-onboarding-first-plan`) and epic E1b (`coach-ui-foundation`, the UI foundation: two views, plan view, form, design system) are built, deployed and archived (PRD 1.8 on `master`). Their requirements are in `openspec/specs/` (13 capabilities); the design system is documented in `docs/design-system.md`, the manual checks in `docs/e1b-manual-checks.md`.
+- Active change: none. Next: a small follow-up change (no new epic, `epic: E1b`) that shows the week (calendar week and date made) for every plan and adds "Delete this plan"; then E1c (plan quality) and the spikes X1 and X2. State in `docs/.phase`.
 - Epic briefs live in `docs/epics/`. Each epic's brief passes G0 before its change starts.
 
 ## Stack (decided, see PRD §13)
@@ -60,3 +60,7 @@ Start each task from `docs/.phase` and the active change, not from chat history;
 - The root `.env` holds production values. Do not run a script that loads it unless the owner asks; local `dev` and `migrate:dev` use a local database and the fake coach on purpose.
 - Never write the owner's personal training data (their own plan, sessions, paces) into the repo, a PR or a test. A made-up key in a test needs `gitleaks:allow` on its line, or the secret scan fails.
 - For hosting setup, write down the order up front: the server address and the client address depend on each other, so create both projects first, then set each side's variables.
+- Layout and focus bugs are invisible to jsdom tests. Look at the real page (screenshot or Playwright with touch emulation) and let Playwright measure sizes and tab through the ring. E1b found, that way, a missing reset, 37 px day buttons and no focus ring on inputs.
+- Tailwind 4: never use `outline-none` with `focus-visible:outline-2` (it sets the outline style to none and no ring is drawn); a unit test forbids it.
+- Before starting the next branch, check that the previous PR is really merged (`gh pr view <n>`), not only that the owner said so.
+- Local development needs its own database: `createdb coach_app_dev` then `npm run migrate:dev -w server` (README). Without it the dev server answers a generic 500.

@@ -79,7 +79,8 @@
   - Test plan: the documentation test; read the document against the code.
   - Scenarios: none new (the E1b design-system scenarios keep covering the document).
   - Done in 3.3: `docs/design-system.md` already lists the `danger` variant, `TrashIcon` and the inline confirmation pattern (written with 2.4 and 2.6); the bundle was built and measured by hand (`gzip -9` of each file in `client/dist/assets`): 112,906 bytes of JavaScript and 4,776 of CSS, 117,682 in all, 1,561 bytes above the 116,121 at the end of E1b and 19,618 above the starting point, under the 60 KB budget; the row and a sentence are in the document. `scripts/trace`: 230 of 230 scenarios covered.
-- [ ] 3.4 Manual checks on the live app, gate G4 and archive.
+- [x] 3.4 Manual checks on the live app, gate G4 and archive.
   - Done when: after the deploy the owner builds plans on the live app, sees the week on each, uses "Plan next week", deletes a plan and reloads, and says it is good, with a note in `docs/` and no URLs; `scripts/trace` covers every scenario; `/opsx:verify` has no critical finding; the change is archived.
   - Test plan: the manual run recorded; `scripts/trace`; the CI result.
   - Scenarios: all scenarios (traceability).
+  - Done in 3.4: the owner used the live app after the deploy of `36eecd3`; the verdict was mixed, not an overall "good" (the delete behavior with several stored plans is confusing and becomes a follow-up change; the owner asked to archive now). The note is `docs/plan-week-and-delete-manual-checks.md`, with no URLs. `scripts/trace`: 230 of 230; `/opsx:verify`: no critical finding and no warning, three suggestions recorded (a stale comment, fixed here; the refused-week wording; the React key warning in `OnboardingForm`).

@@ -12,6 +12,8 @@ const buttonVariants = cva(
         default: "border-primary bg-primary text-primary-foreground hover:bg-primary-hover",
         outline: "border-border bg-card text-foreground hover:bg-secondary",
         secondary: "border-border bg-secondary text-foreground hover:bg-secondary/70",
+        // The destructive action ("Yes, delete"): white on the error token. No hover blend, which would lower the contrast.
+        danger: "border-error bg-error text-primary-foreground hover:brightness-90",
       },
       size: {
         default: "h-11 pointer-fine:h-9 min-w-6",

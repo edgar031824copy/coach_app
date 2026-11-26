@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { RouteIcon, BarbellIcon, MoonIcon, WarningIcon } from '@/components/icons';
+import { RouteIcon, BarbellIcon, MoonIcon, WarningIcon, TrashIcon } from '@/components/icons';
 
 // Task 1.3: the icons are decoration. Text next to them carries the meaning, so a screen reader must skip them.
 describe('icons', () => {
-  const icons = { RouteIcon, BarbellIcon, MoonIcon, WarningIcon };
+  const icons = { RouteIcon, BarbellIcon, MoonIcon, WarningIcon, TrashIcon };
 
   it.each(Object.entries(icons))('%s is an inline svg hidden from assistive technology', (_name, Icon) => {
     const { container } = render(<Icon />);

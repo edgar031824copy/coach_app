@@ -9,6 +9,7 @@
     { "text": "muted-fg", "background": "soft", "min": 4.5, "use": "secondary text on a soft surface (rest day icon, notes)" },
     { "text": "brand-fg", "background": "brand", "min": 4.5, "use": "text on the primary button and a selected day" },
     { "text": "brand-fg", "background": "brand-hover", "min": 4.5, "use": "text on the primary button while hovered" },
+    { "text": "brand-fg", "background": "error", "min": 4.5, "use": "text on the danger button (\"Yes, delete\")" },
     { "text": "brand", "background": "card", "min": 4.5, "use": "accent colored text and links on a card" },
     { "text": "run", "background": "run-soft", "min": 3, "use": "running icon on its tile" },
     { "text": "cf", "background": "cf-soft", "min": 3, "use": "CrossFit icon on its tile" },

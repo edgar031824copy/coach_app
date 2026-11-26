@@ -58,10 +58,11 @@ export const apiFail = (error: ApiError['error'], extra: Partial<ApiError> = {})
   failure: { kind: 'api', error: { error, message: `server says ${error}`, ...extra } },
 });
 
-// A fake API whose answers the test chooses; both calls are spies.
-export function fakeApi(saved: PlanRecord | null, post: () => Promise<ApiResult<PlanResponse>> = async () => ok(planResponse)) {
+// A fake API whose answers the test chooses; every call is a spy.
+export function fakeApi(saved: PlanRecord | null, post: Api['postPlan'] = async () => ok(planResponse)) {
   return {
     getPlan: vi.fn(async () => ok(saved)),
     postPlan: vi.fn(post),
+    deletePlan: vi.fn<Api["deletePlan"]>(async () => ok(undefined)),
   } satisfies Api;
 }

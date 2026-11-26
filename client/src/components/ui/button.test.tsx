@@ -39,3 +39,14 @@ describe('Button (shadcn setup)', () => {
     expect(screen.getByRole('button', { name: 'Secondary' }).className).toContain('bg-secondary');
   });
 });
+
+// Task 2.4 (coach-plan-week-and-delete): the destructive action has its own variant, on the error token, with the same
+// white text as the primary button; its pair is listed and computed in tokens.test.ts.
+describe('Button: danger variant', () => {
+  it('uses the error token with the on-accent text color, and no transparency blend', () => {
+    render(<Button variant="danger">Delete plan</Button>);
+    const classes = screen.getByRole('button', { name: 'Delete plan' }).className.split(/\s+/);
+    expect(classes).toEqual(expect.arrayContaining(['bg-error', 'border-error', 'text-primary-foreground']));
+    expect(classes.some((c) => /^hover:bg-error\/\d+$/.test(c))).toBe(false); // a blend would lower the contrast of the white text
+  });
+});

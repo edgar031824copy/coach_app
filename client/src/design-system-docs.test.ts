@@ -19,7 +19,7 @@ describe('docs/design-system.md', () => {
 
   it('names the icons file and each icon', () => {
     expect(DOC).toContain('`icons.tsx`');
-    for (const icon of ['RouteIcon', 'BarbellIcon', 'MoonIcon', 'WarningIcon']) expect(DOC, icon).toContain(icon);
+    for (const icon of ['RouteIcon', 'BarbellIcon', 'MoonIcon', 'WarningIcon', 'TrashIcon']) expect(DOC, icon).toContain(icon);
   });
 
   it('lists every color token', () => {
@@ -28,6 +28,17 @@ describe('docs/design-system.md', () => {
     const names = [...root.matchAll(/--([a-z0-9-]+)\s*:/g)].map((m) => m[1]);
     expect(names.length).toBeGreaterThan(10);
     for (const name of names) expect(DOC, `--${name}`).toContain(`\`--${name}\``);
+  });
+});
+
+// Task 2.4 (coach-plan-week-and-delete): the danger variant and its contrast pair are listed, in the code and in the document.
+describe('the danger button', () => {
+  it('has its text-on-background pair in token-pairs.json and is described in the document', () => {
+    const pairs = JSON.parse(readFileSync(join(SRC, 'styles', 'token-pairs.json'), 'utf8')).pairs as { text: string; background: string; min: number }[];
+    expect(pairs.find((p) => p.text === 'brand-fg' && p.background === 'error')?.min).toBe(4.5);
+    const button = DOC.slice(DOC.indexOf('### Button'), DOC.indexOf('### Card'));
+    expect(button).toContain('`danger`');
+    expect(button).toMatch(/brand-fg.*on.*error|white on the error/i);
   });
 });
 

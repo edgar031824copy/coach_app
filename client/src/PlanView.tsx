@@ -1,5 +1,7 @@
 import type { Ref } from 'react';
-import type { Day, PlanRecord, Session } from 'shared';
+import { shortDate, type Day, type PlanRecord, type Session } from 'shared';
+import { localDay } from './week.js';
+import { useDeleteControl, type DeletionProps } from './DeleteControl.js';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -30,8 +32,9 @@ function Stat({ n, label }: { n: number; label: string }) {
 
 // A plan record, or a full plan response (which has the same fields and one more). Text from the plan is rendered as
 // text by React, never as markup. The safety note comes first, then the summary, the seven days and the suggestions.
-export function PlanView({ record, headingRef }: { record: PlanRecord; headingRef?: Ref<HTMLHeadingElement> }) {
+export function PlanView({ record, headingRef, deletion }: { record: PlanRecord; headingRef?: Ref<HTMLHeadingElement>; deletion?: DeletionProps }) {
   const { plan, onboarding } = record;
+  const { trigger, panel } = useDeleteControl(shortDate(record.weekStart), deletion);
   const byDay = new Map(plan.days.map((d) => [d.day, d]));
   const sessionsOf = (id: Day) => byDay.get(id)?.sessions ?? [];
   const runs = DAYS.reduce((n, { id }) => n + sessionsOf(id).filter((x) => x.discipline === 'running').length, 0);
@@ -50,10 +53,20 @@ export function PlanView({ record, headingRef }: { record: PlanRecord; headingRe
       )}
 
       <Card className="grid gap-3">
-        <div>
-          {onboarding.pastedPlanWeek !== null && <p className="m-0 text-sm font-semibold text-muted-foreground">Week {onboarding.pastedPlanWeek} of your running plan</p>}
-          <h2 id="plan-heading" ref={headingRef} tabIndex={-1} className="m-0 text-2xl font-extrabold leading-tight">Your plan</h2>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {onboarding.pastedPlanWeek !== null && <p className="m-0 text-sm font-semibold text-muted-foreground">Week {onboarding.pastedPlanWeek} of your running plan</p>}
+            <h2 id="plan-heading" ref={headingRef} tabIndex={-1} className="m-0 text-2xl font-extrabold leading-tight">Your plan</h2>
+            {/* The week is a date (the Monday), shown as it is; the day it was made is the athlete's own calendar day. Each is
+                its own span so the two lines wrap apart on a narrow screen. */}
+            <p className="m-0 mt-1 flex flex-wrap gap-x-3 text-sm font-semibold text-muted-foreground">
+              <span>Week of {shortDate(record.weekStart)}</span>
+              <span>Made {shortDate(localDay(new Date(record.createdAt)))}</span>
+            </p>
+          </div>
+          {trigger}
         </div>
+        {panel}
         <div role="group" aria-label="Week summary" className="grid grid-cols-3 gap-2">
           <Stat n={runs} label={plural(runs, 'run', 'runs')} />
           <Stat n={crossfit} label="CrossFit" />

@@ -1,5 +1,5 @@
 ## Purpose
-Defines how a plan is deleted: the server removes it from storage, and the client offers a "Delete this plan" button that asks first, deletes the plan on screen, and opens a new form.
+Defines how a plan is deleted: the server removes it from storage, and the client offers a trash button in the summary card that asks first, deletes the plan on screen, and opens a new form.
 
 ## ADDED Requirements
 
@@ -39,30 +39,30 @@ Defines how a plan is deleted: the server removes it from storage, and the clien
 - **THEN** the client's origin is allowed and the other origin is refused as for every other request
 
 ### Requirement: Delete button with a confirmation
-The plan view SHALL offer "Delete this plan" beside "Plan next week" and "New plan". Pressing it SHALL send nothing and SHALL replace those three buttons with a confirmation, "Delete this plan? This cannot be undone.", with "Cancel" first and "Yes, delete" second, and focus on "Cancel"; a press on "Yes, delete" in the first half second after the confirmation opens SHALL be ignored, so a double click on "Delete this plan" cannot confirm. "Cancel" SHALL bring the three buttons back, with focus on "Delete this plan". "Yes, delete" SHALL send the deletion of the plan that is shown (by its id, whatever other plans are stored), once however often it is pressed, with both confirmation buttons disabled while it runs. On success, or when the server says the plan is already gone, the plan SHALL no longer be shown and the empty form view SHALL open, with its heading focused. When the server answers with an error the plan SHALL stay shown, with the three buttons back and an alert "The plan could not be deleted. Nothing was changed. You can try again." that takes focus. When no answer arrives (a timeout or a network error) the plan SHALL stay shown, with the three buttons back and an alert "The plan may already be deleted. Reload the page to check, or try again." that takes focus.
+The plan view SHALL offer deletion as an icon-only trash button named "Delete this plan", at the top right of the summary card, level with the "Your plan" heading, at least 44 by 44 px on a touch screen. The row below the plan SHALL hold only "Plan next week" and "New plan". Pressing the trash button SHALL send nothing and SHALL show, inside the summary card under the heading row, a confirmation "Delete the plan for the week of 23 Nov? This cannot be undone." (the plan's own week, written as in the summary), with "Cancel" first and "Delete plan" second, and focus on "Cancel"; while it is open the trash button is not shown. A press on "Delete plan" in the first half second after the confirmation opens SHALL be ignored. "Cancel" SHALL close the confirmation and bring the trash button back, with focus on it. Pressing "Plan next week" or "New plan" while the confirmation is open SHALL close it. "Delete plan" SHALL send the deletion of the plan that is shown (by its id, whatever other plans are stored), once however often it is pressed, with both confirmation buttons disabled while it runs. On success, or when the server says the plan is already gone, the plan SHALL no longer be shown and the empty form view SHALL open, with its heading focused. When the server answers with an error the plan SHALL stay shown, the confirmation SHALL close, the trash button SHALL be back, and an alert "The plan could not be deleted. Nothing was changed. You can try again." SHALL show in the summary card and take focus. When no answer arrives (a timeout or a network error) the plan SHALL stay shown, the confirmation SHALL close, the trash button SHALL be back, and an alert "The plan may already be deleted. Reload the page to check, or try again." SHALL show in the summary card and take focus.
 
 #### Scenario: Button is offered with a plan
 - **WHEN** a plan is shown
-- **THEN** "Delete this plan" is offered beside "Plan next week" and "New plan", and it is not offered in the form view or while the saved plan loads
+- **THEN** the trash button "Delete this plan" is at the top right of the summary card, "Plan next week" and "New plan" are the only buttons below the plan, and the trash button is not offered in the form view or while the saved plan loads
 
 #### Scenario: Confirmation comes first
-- **WHEN** the athlete presses "Delete this plan"
-- **THEN** no request is sent, the confirmation "Delete this plan? This cannot be undone." shows with "Cancel" and then "Yes, delete" in place of the three buttons, and focus is on "Cancel"
+- **WHEN** the athlete presses the trash button
+- **THEN** no request is sent, the confirmation naming the plan's week shows in the summary card with "Cancel" and then "Delete plan", the trash button is hidden, and focus is on "Cancel"
 
 #### Scenario: A double click does not confirm
-- **WHEN** the athlete double-clicks "Delete this plan"
+- **WHEN** the athlete double-clicks the trash button
 - **THEN** the confirmation is shown and no request is sent
 
 #### Scenario: Cancel keeps the plan
 - **WHEN** the athlete presses "Cancel"
-- **THEN** the plan is unchanged, no request was sent, the three buttons are back and focus is on "Delete this plan"
+- **THEN** the plan is unchanged, no request was sent, the confirmation is closed and the trash button is back with focus on it
 
 #### Scenario: The deletion names the shown plan
 - **WHEN** the shown plan is stored under an id while a newer plan is also stored, and the athlete confirms
 - **THEN** the deletion is sent for the shown plan's id and the newer plan stays stored
 
 #### Scenario: Confirming deletes the plan and opens a new form
-- **WHEN** the athlete presses "Yes, delete" and the server answers 204
+- **WHEN** the athlete presses "Delete plan" and the server answers 204
 - **THEN** the plan is no longer shown, the form view opens empty with the heading "New plan" focused, no earlier plan's answers are in it, and no failure message shows
 
 #### Scenario: A reload does not show the deleted plan
@@ -74,16 +74,16 @@ The plan view SHALL offer "Delete this plan" beside "Plan next week" and "New pl
 - **THEN** the empty form opens now, and a reload shows the older plan as the saved plan
 
 #### Scenario: One request however often it is pressed
-- **WHEN** the athlete presses "Yes, delete" twice in a row
-- **THEN** one deletion request is sent, and "Yes, delete" and "Cancel" are disabled while it runs
+- **WHEN** the athlete presses "Delete plan" twice in a row
+- **THEN** one deletion request is sent, and "Delete plan" and "Cancel" are disabled while it runs
 
 #### Scenario: A failed deletion keeps the plan
 - **WHEN** the server answers the deletion with an error
-- **THEN** the plan stays shown, the three buttons are back, and an alert says "The plan could not be deleted. Nothing was changed. You can try again." and has focus
+- **THEN** the plan stays shown, the confirmation is closed, the trash button is back, and an alert in the summary card says "The plan could not be deleted. Nothing was changed. You can try again." and has focus
 
 #### Scenario: A deletion that may have happened says so
 - **WHEN** the deletion times out or the connection fails
-- **THEN** the plan stays shown, the three buttons are back, and an alert says "The plan may already be deleted. Reload the page to check, or try again." and has focus
+- **THEN** the plan stays shown, the confirmation is closed, the trash button is back, and an alert in the summary card says "The plan may already be deleted. Reload the page to check, or try again." and has focus
 
 #### Scenario: A plan that is already gone counts as deleted
 - **WHEN** the server answers 404 `not_found` to the deletion

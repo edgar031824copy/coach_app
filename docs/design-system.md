@@ -49,7 +49,7 @@ All in `client/src/styles/tokens.css`. The first table is the raw values (mockup
 
 How the screens use the components. The code is in `client/src/PlanView.tsx`, `client/src/OnboardingForm.tsx` and `client/src/App.tsx`.
 
-**Plan view.** The safety note comes first when the plan has one (`Alert` danger, `role="note"`, warning icon, text). Then a summary card (week label, the "Your plan" heading and the counts of runs, CrossFit sessions and rest days, counted from the plan). Then seven day cards in week order: a training day is a `Card` with an `h3`, a session row per session (icon tile, discipline as text, description, intensity badge, "from your plan" badge) and the combined-load note inside the card; a rest day is the quiet card with a moon tile. Then the coach suggestions with a "coach suggestion" badge, and the two buttons.
+**Plan view.** The safety note comes first when the plan has one (`Alert` danger, `role="note"`, warning icon, text). Then a summary card (the "Your plan" heading with the week and the day it was made, the icon-only delete button at the top right, and the counts of runs, CrossFit sessions and rest days, counted from the plan). Then seven day cards in week order: a training day is a `Card` with an `h3`, a session row per session (icon tile, discipline as text, description, intensity badge, "from your plan" badge) and the combined-load note inside the card; a rest day is the quiet card with a moon tile. Then the coach suggestions with a "coach suggestion" badge, and the two buttons, "Plan next week" and "New plan". *Deleting:* the trash button (`TrashIcon`, `aria-label` and `title` "Delete this plan", 44 px on touch) sits in the summary card header, apart from the two main actions. Pressing it shows the confirmation inside the card, under the header: a soft panel with a question that names the week, "Cancel" first and a red "Delete plan" second; focus goes to "Cancel", and back to the trash button after "Cancel". It is inline, not a dialog. A failed deletion shows an `Alert` danger in the same card.
 
 **Form view.** Four section cards (`Card` with an `h3` and a one-line hint): goal (with quick ideas while it is empty), level, week, and pain or injury, which is never folded. Under them the three optional parts.
 - *Segmented level choice:* a `fieldset` with a `legend`, three native radios drawn by a `span` (the input covers its label). The chosen option is a white pill with an accent ring; the ring is what makes the state visible, so keep it.
@@ -68,7 +68,7 @@ How the screens use the components. The code is in `client/src/PlanView.tsx`, `c
 In `client/src/components/ui/`. Import with the `@` alias, for example `import { Button } from '@/components/ui/button'`.
 
 ### Button (`button.tsx`)
-A button or, with `asChild`, a link styled as one. Variants: `default` (the accent; the one main action of a view, for example "Build my plan"), `outline` (a second action next to it, for example "New plan"), `secondary` (a quiet choice, such as a quick idea). One `default` button per view.
+A button or, with `asChild`, a link styled as one. Variants: `default` (the accent; the one main action of a view, for example "Build my plan"), `outline` (a second action next to it, for example "New plan"), `secondary` (a quiet choice, such as a quick idea), `danger` (the step that cannot be undone, only ever as the second step of a confirmation: "Delete plan"). One `default` button per view. `danger` is white (`--brand-fg`) on the `--error` token, a pair listed in `token-pairs.json` with a minimum of 4.5; it darkens on hover with a filter, never with a transparent blend, which would lower that contrast.
 
 ### Card (`card.tsx`)
 A surface for one group of content: a day, a form section, the summary. Variants: `default`, and `quiet` (dashed, flat, see-through) for rest days. The heading inside it is written by the view, at the right level.
@@ -98,6 +98,7 @@ In `client/src/components/`, inline SVG, no icon library. They are decoration: `
 | `BarbellIcon` | CrossFit sessions |
 | `MoonIcon` | rest days |
 | `WarningIcon` | the safety note and failures |
+| `TrashIcon` | the delete button on the summary card |
 
 ## Bundle size
 

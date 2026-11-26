@@ -17,7 +17,7 @@ describe('api: timeout', () => {
   it('has a 120 s timeout that exceeds a cold Render wake (about 60 s) plus the coach timeout (30 s) @spec(deploy/cold-start-experience/timeout-covers-a-cold-start)', async () => {
     expect(REQUEST_TIMEOUT_MS).toBe(120_000);
     const api = createApi({ fetchFn: delayedFetch(60_000 + 30_000, 200, planResponse) });
-    const call = watch(api.postPlan(onboarding));
+    const call = watch(api.postPlan(onboarding, "2026-11-23"));
     await vi.advanceTimersByTimeAsync(90_000);
     expect(call.done).toBe(true);
     expect(call.value).toEqual({ ok: true, value: planResponse }); // answered after the full wake plus coach time: no timeout
@@ -25,7 +25,7 @@ describe('api: timeout', () => {
 
   it('gives up at 120 s, not before, and reports a timeout', async () => {
     const api = createApi({ fetchFn: delayedFetch(10 * 60_000, 200, planResponse) });
-    const call = watch(api.postPlan(onboarding));
+    const call = watch(api.postPlan(onboarding, "2026-11-23"));
     await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS - 1);
     expect(call.done).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
@@ -43,39 +43,39 @@ describe('api: timeout', () => {
 describe('api: results', () => {
   beforeEach(() => vi.useRealTimers()); // these answer at once, so no fake clock is needed
 
-  it('posts the onboarding as JSON to /api/plan under the base URL', async () => {
+  it('posts the onboarding and the week as JSON to /api/plan under the base URL', async () => {
     const fetchFn = vi.fn(async () => new Response(JSON.stringify(planResponse), { status: 200 }));
-    await createApi({ baseUrl: 'https://server.example.com', fetchFn: fetchFn as unknown as typeof fetch }).postPlan(onboarding);
+    await createApi({ baseUrl: 'https://server.example.com', fetchFn: fetchFn as unknown as typeof fetch }).postPlan(onboarding, '2026-11-23');
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://server.example.com/api/plan');
     expect(init.method).toBe('POST');
     expect(new Headers(init.headers).get('content-type')).toBe('application/json');
-    expect(JSON.parse(init.body as string)).toEqual(onboarding);
+    expect(JSON.parse(init.body as string)).toEqual({ ...onboarding, weekStart: '2026-11-23' });
   });
 
   it('returns the typed API error with its fields', async () => {
     const error = { error: 'validation_error', message: 'Check the form.', fields: { goal: 'Goal is required.' } };
-    const r = await createApi({ fetchFn: delayedFetch(0, 400, error) }).postPlan(onboarding);
+    const r = await createApi({ fetchFn: delayedFetch(0, 400, error) }).postPlan(onboarding, "2026-11-23");
     expect(r).toEqual({ ok: false, failure: { kind: 'api', error } });
   });
 
   it('keeps remainingCallsToday on a failed call', async () => {
     const error = { error: 'coach_unavailable', message: 'Try again.', remainingCallsToday: 3 };
-    const r = await createApi({ fetchFn: delayedFetch(0, 502, error) }).postPlan(onboarding);
+    const r = await createApi({ fetchFn: delayedFetch(0, 502, error) }).postPlan(onboarding, "2026-11-23");
     expect(r).toEqual({ ok: false, failure: { kind: 'api', error } });
   });
 
   it('reports a network failure when the server cannot be reached', async () => {
     const fetchFn = (async () => { throw new TypeError('Failed to fetch'); }) as unknown as typeof fetch;
-    expect(await createApi({ fetchFn }).postPlan(onboarding)).toEqual({ ok: false, failure: { kind: 'network' } });
+    expect(await createApi({ fetchFn }).postPlan(onboarding, "2026-11-23")).toEqual({ ok: false, failure: { kind: 'network' } });
   });
 
   it('treats a response of the wrong shape as a server error instead of trusting it', async () => {
-    const r = await createApi({ fetchFn: delayedFetch(0, 200, { nonsense: true }) }).postPlan(onboarding);
+    const r = await createApi({ fetchFn: delayedFetch(0, 200, { nonsense: true }) }).postPlan(onboarding, "2026-11-23");
     expect(r.ok).toBe(false);
     expect(!r.ok && r.failure.kind === 'api' && r.failure.error.error).toBe('server_error');
     const html = (async () => new Response('<html>bad gateway</html>', { status: 502 })) as unknown as typeof fetch;
-    const h = await createApi({ fetchFn: html }).postPlan(onboarding);
+    const h = await createApi({ fetchFn: html }).postPlan(onboarding, "2026-11-23");
     expect(!h.ok && h.failure.kind === 'api' && h.failure.error.error).toBe('server_error');
   });
 
@@ -83,5 +83,51 @@ describe('api: results', () => {
     const record = PlanRecordSchema.parse(planResponse); // the saved plan has no remainingCallsToday
     expect(await createApi({ fetchFn: delayedFetch(0, 200, record) }).getPlan()).toEqual({ ok: true, value: record });
     expect(await createApi({ fetchFn: delayedFetch(0, 200, null) }).getPlan()).toEqual({ ok: true, value: null });
+  });
+});
+
+// Task 2.4 (coach-plan-week-and-delete): deleting a plan, whose success answer is an empty 204.
+describe('api: deletePlan', () => {
+  beforeEach(() => vi.useRealTimers());
+
+  it('sends DELETE to /api/plan/:id under the base URL and accepts the empty 204 answer', async () => {
+    const fetchFn = vi.fn(async () => new Response(null, { status: 204 }));
+    const r = await createApi({ baseUrl: 'https://server.example.com', fetchFn: fetchFn as unknown as typeof fetch }).deletePlan(7);
+    const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://server.example.com/api/plan/7');
+    expect(init.method).toBe('DELETE');
+    expect(init.body).toBeUndefined();
+    expect(r).toEqual({ ok: true, value: undefined });
+  });
+
+  it('returns the typed not_found error for a plan that is gone', async () => {
+    const error = { error: 'not_found', message: 'No such plan.' };
+    expect(await createApi({ fetchFn: delayedFetch(0, 404, error) }).deletePlan(7)).toEqual({ ok: false, failure: { kind: 'api', error } });
+  });
+
+  it('returns a network failure, and a timeout when no answer comes in time', async () => {
+    const down = (async () => { throw new TypeError('Failed to fetch'); }) as unknown as typeof fetch;
+    expect(await createApi({ fetchFn: down }).deletePlan(7)).toEqual({ ok: false, failure: { kind: 'network' } });
+    vi.useFakeTimers();
+    const call = watch(createApi({ fetchFn: delayedFetch(10 * 60_000, 204, null) }).deletePlan(7));
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    expect(call.value).toEqual({ ok: false, failure: { kind: 'timeout' } });
+  });
+
+  it('does not take a 200 whose body is not JSON as a deletion (a static host answering with its page)', async () => {
+    const page = (async () => new Response('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch;
+    const r = await createApi({ fetchFn: page }).deletePlan(7);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.failure.kind).toBe('api'); // "the server sent an unexpected response", so the plan is not cleared
+  });
+
+  it('does not take a 200 with an empty body as a deletion either: only 204 is the success answer', async () => {
+    const empty = (async () => new Response(null, { status: 200 })) as unknown as typeof fetch;
+    expect((await createApi({ fetchFn: empty }).deletePlan(7)).ok).toBe(false);
+  });
+
+  it('does not trust a 200 that carries a body: the success answer is empty', async () => {
+    const r = await createApi({ fetchFn: delayedFetch(0, 200, { surprise: true }) }).deletePlan(7);
+    expect(r.ok).toBe(false);
   });
 });

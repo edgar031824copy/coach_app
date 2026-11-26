@@ -100,3 +100,25 @@ describe('describeFailure: not_found', () => {
     expect(describeFailure(api('not_found'))).toEqual({ message: 'The plan was not found.', canRetry: false, limitNote: null });
   });
 });
+
+// Task 2.2 (coach-plan-week-and-delete): a refused week is explained in words, with no retry (the same week would be
+// refused again). Any other validation error keeps the E1 message.
+describe('describeFailure: a refused week', () => {
+  const REFUSED = 'That week is too far from today. Use New plan to start from this week.';
+  const TODAY = 'Some answers need fixing. Check the highlighted fields.';
+
+  it('explains a validation error whose only field is weekStart, with no retry @spec(plan-week/the-client-asks-for-the-right-week/a-week-that-is-too-far-away-is-explained)', () => {
+    const n = describeFailure(api('validation_error', { fields: { weekStart: 'The week must start on a Monday, within half a year of today.' } }));
+    expect(n).toEqual({ message: REFUSED, canRetry: false, limitNote: null });
+  });
+
+  it('keeps the E1 message when other fields are named as well', () => {
+    expect(describeFailure(api('validation_error', { fields: { weekStart: 'x', goal: 'Goal is required.' } })).message).toBe(TODAY);
+  });
+
+  it('keeps the E1 message for any other single field or for no fields', () => {
+    expect(describeFailure(api('validation_error', { fields: { goal: 'Goal is required.' } })).message).toBe(TODAY);
+    expect(describeFailure(api('validation_error', { fields: {} })).message).toBe(TODAY);
+    expect(describeFailure(api('validation_error')).message).toBe(TODAY);
+  });
+});

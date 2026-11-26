@@ -5,7 +5,7 @@ The owner's manual pass on E1b found two gaps: a plan made without a pasted plan
 ## What Changes
 
 - **Week for every plan.** Each saved plan carries the Monday of the week it is for (`weekStart`). The first plan is for the current week; "Plan next week" sends the following Monday (never a past week). The plan view shows "Week of 23 Nov" and "Made 26 Nov"; "Week N of your running plan" stays for pasted plans. Existing plans get the Monday of their creation week.
-- **Delete a plan.** A "Delete this plan" button that asks first, backed by a new `DELETE /api/plan/:id`. It removes the shown plan from the database, refunds nothing, and opens the empty form. A reload never shows the deleted plan.
+- **Delete a plan.** A trash button "Delete this plan" on the summary card that asks first (a question inside the card), backed by a new `DELETE /api/plan/:id`. It removes the shown plan from the database, refunds nothing, and opens the empty form. A reload never shows the deleted plan.
 - `POST /api/plan` accepts an optional `weekStart` beside the onboarding (a Monday within 26 weeks of today; the current week when absent), so old clients keep working.
 
 **For the owner at G1**

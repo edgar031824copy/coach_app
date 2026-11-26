@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { Day, PlanRecord, PlanDay, Session } from 'shared';
 import { PlanView } from './PlanView.js';
@@ -69,7 +69,7 @@ describe('PlanView: week number', () => {
 
   it('shows no week number when no plan was pasted', () => {
     render(<PlanView record={record({})} />);
-    expect(screen.queryByText(/week/i)).toBeNull();
+    expect(screen.queryByText(/week \d+ of your running plan/i)).toBeNull(); // "Week of 9 Nov" (the plan's own week) is always shown
   });
 });
 
@@ -168,6 +168,73 @@ describe('PlanView: summary of the week', () => {
     unmount();
     render(<PlanView record={record({})} />);
     expect(screen.queryByText(/of your running plan/)).toBeNull();
+  });
+});
+
+// Task 2.3 (coach-plan-week-and-delete): the week the plan is for and the day it was made, for every plan.
+describe('PlanView: the week and the date made', () => {
+  const realTz = process.env.TZ;
+  afterEach(() => {
+    if (realTz === undefined) delete process.env.TZ;
+    else process.env.TZ = realTz;
+  });
+  // The zone is set through TZ; the offset check proves it really moved, so a test cannot pass by accident.
+  const inZone = (tz: string, offsetMinutes: number, at: string) => {
+    process.env.TZ = tz;
+    expect(-new Date(at).getTimezoneOffset() + 0).toBe(offsetMinutes); // + 0 turns the -0 of UTC into 0
+  };
+  const made = (weekStart: string, createdAt: string, extra: Parameters<typeof record>[1] = {}): PlanRecord => ({ ...record({}, extra), weekStart, createdAt });
+
+  it('shows "Week of 23 Nov" and "Made 26 Nov" @spec(plan-presentation/summary-of-the-week/week-and-date-made-are-shown)', () => {
+    inZone('UTC', 0, '2026-11-26T12:00:00Z');
+    render(<PlanView record={made('2026-11-23', '2026-11-26T12:00:00Z')} />);
+    expect(screen.getByText('Week of 23 Nov')).toBeTruthy();
+    expect(screen.getByText('Made 26 Nov')).toBeTruthy();
+  });
+
+  it('shows both without a pasted plan, and no "of your running plan" label @spec(plan-presentation/summary-of-the-week/shown-without-a-pasted-plan)', () => {
+    inZone('UTC', 0, '2026-11-26T12:00:00Z');
+    render(<PlanView record={made('2026-11-23', '2026-11-26T12:00:00Z', { pastedPlanWeek: null })} />);
+    expect(screen.getByText('Week of 23 Nov')).toBeTruthy();
+    expect(screen.getByText('Made 26 Nov')).toBeTruthy();
+    expect(screen.queryByText(/of your running plan/)).toBeNull();
+  });
+
+  it('shows both week labels with a pasted plan @spec(plan-presentation/summary-of-the-week/both-week-labels-with-a-pasted-plan)', () => {
+    inZone('UTC', 0, '2026-11-26T12:00:00Z');
+    render(<PlanView record={made('2026-11-23', '2026-11-26T12:00:00Z', { pastedPlanWeek: 3 })} />);
+    expect(screen.getByText('Week 3 of your running plan')).toBeTruthy();
+    expect(screen.getByText('Week of 23 Nov')).toBeTruthy();
+  });
+
+  it('takes the week from weekStart and the date made from createdAt, not one from the other', () => {
+    inZone('UTC', 0, '2026-11-13T10:00:00Z');
+    render(<PlanView record={made('2026-12-28', '2026-11-13T10:00:00Z')} />);
+    expect(screen.getByText('Week of 28 Dec')).toBeTruthy();
+    expect(screen.getByText('Made 13 Nov')).toBeTruthy();
+  });
+
+  it('shows the date made in the athlete\'s calendar: 23:30 UTC with a zone two hours ahead is the next day @spec(plan-presentation/summary-of-the-week/date-made-is-in-the-athletes-calendar)', () => {
+    inZone('Europe/Athens', 120, '2026-11-26T23:30:00Z');
+    render(<PlanView record={made('2026-11-23', '2026-11-26T23:30:00Z')} />);
+    expect(screen.getByText('Made 27 Nov')).toBeTruthy();
+    expect(screen.getByText('Week of 23 Nov')).toBeTruthy(); // the week is a date, not an instant: it never moves with the zone
+  });
+
+  it('uses three-letter English month names, "Sep" for September @spec(plan-presentation/summary-of-the-week/month-names-have-three-letters)', () => {
+    inZone('UTC', 0, '2026-09-10T12:00:00Z');
+    render(<PlanView record={made('2026-09-07', '2026-09-10T12:00:00Z')} />);
+    expect(screen.getByText('Week of 7 Sep')).toBeTruthy();
+    expect(screen.getByText('Made 10 Sep')).toBeTruthy();
+  });
+
+  it('keeps the week line inside the summary card, before the counts', () => {
+    inZone('UTC', 0, '2026-11-26T12:00:00Z');
+    render(<PlanView record={made('2026-11-23', '2026-11-26T12:00:00Z')} />);
+    const week = screen.getByText('Week of 23 Nov');
+    const counts = screen.getByRole('group', { name: 'Week summary' });
+    expect(week.compareDocumentPosition(counts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(week.closest('section')).toBe(counts.closest('section'));
   });
 });
 

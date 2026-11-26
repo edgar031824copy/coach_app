@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App.js';
 import { apiFail, fakeApi, ok, planRecord, planResponse } from './test-helpers.js';
 import type { PlanResponse } from 'shared';
+import type { Api } from './api.js';
 
 afterEach(() => vi.useRealTimers());
 
@@ -49,7 +50,7 @@ describe('App: reload', () => {
   });
 
   it('says the saved plan could not be loaded, and still lets the athlete build one', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(await screen.findByText(/could not load your saved plan/i)).toBeTruthy();
     expect(build()).toBeTruthy();
@@ -73,7 +74,7 @@ describe('App: Plan next week', () => {
     await user.clear(screen.getByLabelText(/week of your plan/i));
     await user.type(screen.getByLabelText(/week of your plan/i), '6');
     await user.click(build());
-    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 6 }));
+    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 6 }), expect.any(String));
   });
 
   it('submits the pre-filled form once, as any onboarding @spec(plan-storage/plan-next-week/submitting-counts-as-a-normal-call)', async () => {
@@ -81,7 +82,7 @@ describe('App: Plan next week', () => {
     await user.click(nextWeek());
     await user.click(build());
     expect(api.postPlan).toHaveBeenCalledTimes(1);
-    expect(api.postPlan).toHaveBeenCalledWith({ ...pastedRecord.onboarding, pastedPlanWeek: 4 });
+    expect(api.postPlan).toHaveBeenCalledWith({ ...pastedRecord.onboarding, pastedPlanWeek: 4 }, expect.any(String));
   });
 
   it('keeps the week null when no plan was pasted @spec(plan-storage/plan-next-week/no-pasted-plan)', async () => {
@@ -201,7 +202,7 @@ describe('App: start state', () => {
 
   it('shows only "Loading your saved plan…" until the read ends @spec(app-views/start-state/loading-before-the-read-ends)', async () => {
     const gate = pending();
-    const api = { getPlan: vi.fn(() => gate.p), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(() => gate.p), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(screen.getByRole('status').textContent).toBe('Loading your saved plan…');
     expect(planRegion()).toBeNull();
@@ -228,7 +229,7 @@ describe('App: start state', () => {
   });
 
   it('opens the form with the failed-read message when the read fails @spec(app-views/start-state/a-failed-read-opens-the-form-view-with-a-message)', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(await screen.findByText('Could not load your saved plan. You can still build a new one.')).toBeTruthy();
     expect(build()).toBeTruthy();
@@ -236,7 +237,7 @@ describe('App: start state', () => {
   });
 
   it('drops the failed-read message once the athlete builds a plan and presses "New plan" @spec(app-views/start-state/the-failed-read-message-does-not-follow-the-athlete)', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), postPlan: vi.fn(async () => ok(planResponse)) };
+    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn(async () => ok(planResponse)) };
     const user = userEvent.setup();
     render(<App api={api} />);
     await screen.findByText(/could not load your saved plan/i);
@@ -437,7 +438,7 @@ describe('App: focus', () => {
     await user.click(nextWeek());
     await user.click(build());
     await screen.findByText('Goal is required from the server.');
-    expect(document.activeElement).toBe(screen.getByLabelText(/goal/i));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/goal/i))); // the focus effect runs just after the message
   });
 
   it('puts focus on the failure message when the server names only a field the form has no place for @spec(app-views/outcomes-of-a-submit/a-failure-moves-focus)', async () => {
@@ -466,7 +467,7 @@ describe('App: states look like the design system', () => {
     const api = fakeApi(pastedRecord, () => new Promise(() => {}));
     let release!: () => void;
     const gate = new Promise<ReturnType<typeof ok<typeof pastedRecord>>>((r) => { release = () => r(ok(pastedRecord)); });
-    const slow = { getPlan: vi.fn(() => gate), postPlan: api.postPlan };
+    const slow = { getPlan: vi.fn(() => gate), deletePlan: vi.fn(), postPlan: api.postPlan };
     render(<App api={slow} />);
     const loading = screen.getByRole('status');
     expect(loading.textContent).toBe('Loading your saved plan…');
@@ -513,7 +514,7 @@ describe('App: states look like the design system', () => {
   });
 
   it('shows the failed-read message in the soft style, not as an alert', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     const note = await screen.findByText('Could not load your saved plan. You can still build a new one.');
     expect(classesOf(note.closest('[data-slot="alert"]') as HTMLElement)).toContain('bg-secondary');
@@ -572,6 +573,398 @@ describe('App: week 53 after Plan next week', () => {
     await user.type(screen.getByLabelText(/week of your plan/i), '1');
     expect(screen.queryByText('The plan week must be a whole number from 1 to 52.')).toBeNull();
     await user.click(build());
-    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 1 }));
+    expect(api.postPlan).toHaveBeenCalledWith(expect.objectContaining({ pastedPlanWeek: 1 }), expect.any(String));
+  });
+});
+
+// Task 2.1: every plan request names its week. Only Date is faked (user-event needs the real timers), and the zone is
+// changed through TZ; the offset check proves the zone really moved.
+describe('App: the week every request asks for', () => {
+  const realTz = process.env.TZ;
+  afterEach(() => {
+    if (realTz === undefined) delete process.env.TZ;
+    else process.env.TZ = realTz;
+  });
+  const clock = (iso: string) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(iso));
+  };
+  const shownWeek = (weekStart: string) => ({ ...planRecord(), weekStart });
+  const sentWeek = (api: Awaited<ReturnType<typeof open>>['api'], call = 0) => api.postPlan.mock.calls[call]?.[1];
+
+  it('asks for the current week with the first plan @spec(plan-week/the-client-asks-for-the-right-week/first-plan-is-for-the-current-week)', async () => {
+    clock('2026-11-26T12:00:00Z'); // a Thursday
+    const { api, user } = await open(null);
+    await fillValidForm(user);
+    await user.click(build());
+    expect(api.postPlan).toHaveBeenCalledTimes(1);
+    expect(sentWeek(api)).toBe('2026-11-23');
+  });
+
+  it('lets the athlete see no week field: the week is not theirs to edit', async () => {
+    clock('2026-11-26T12:00:00Z');
+    await open(null);
+    expect(screen.queryByLabelText(/week start|starts on|week of/i)).toBeNull(); // "week of your plan" appears only with a pasted plan
+  });
+
+  it('takes the week from the athlete\'s calendar, not from UTC @spec(plan-week/the-client-asks-for-the-right-week/the-week-follows-the-athletes-calendar)', async () => {
+    process.env.TZ = 'Europe/Madrid';
+    const at = '2026-11-29T23:30:00Z'; // 00:30 on Monday 30 November in Madrid, still Sunday in UTC
+    expect(-new Date(at).getTimezoneOffset()).toBe(60);
+    clock(at);
+    const { api, user } = await open(null);
+    await fillValidForm(user);
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2026-11-30');
+  });
+
+  it('asks for the shown week plus 7 days with "Plan next week" @spec(plan-week/the-client-asks-for-the-right-week/plan-next-week-moves-one-week)', async () => {
+    clock('2026-11-26T12:00:00Z');
+    const { api, user } = await open(shownWeek('2026-11-23'));
+    await user.click(nextWeek());
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2026-11-30');
+  });
+
+  it('crosses a month and a year @spec(plan-week/the-client-asks-for-the-right-week/plan-next-week-crosses-a-month-and-a-year)', async () => {
+    clock('2026-12-30T12:00:00Z');
+    const { api, user } = await open(shownWeek('2026-12-28'));
+    await user.click(nextWeek());
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2027-01-04');
+  });
+
+  it('never plans the past: an old shown week gives the current Monday @spec(plan-week/the-client-asks-for-the-right-week/plan-next-week-never-plans-the-past)', async () => {
+    clock('2026-11-26T12:00:00Z');
+    const { api, user } = await open(shownWeek('2026-10-26')); // four weeks back
+    await user.click(nextWeek());
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2026-11-23');
+  });
+
+  it('asks for the current week again with "New plan", even when a later week is shown @spec(plan-week/the-client-asks-for-the-right-week/new-plan-is-for-the-current-week-again)', async () => {
+    clock('2026-11-26T12:00:00Z');
+    const { api, user } = await open(shownWeek('2026-12-07'));
+    await user.click(newPlan());
+    await fillValidForm(user);
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2026-11-23');
+  });
+
+  it('does not keep the next week after the athlete goes back and chooses "New plan"', async () => {
+    clock('2026-11-26T12:00:00Z');
+    const { api, user } = await open(shownWeek('2026-11-23'));
+    await user.click(nextWeek());
+    await user.click(myPlan());
+    await user.click(newPlan());
+    await fillValidForm(user);
+    await user.click(build());
+    expect(sentWeek(api)).toBe('2026-11-23');
+  });
+
+  it('repeats the week of a first plan on "Try again" when the calendar has moved on @spec(plan-week/the-client-asks-for-the-right-week/a-retry-keeps-the-week)', async () => {
+    clock('2026-11-29T20:00:00Z'); // Sunday evening: this week is 2026-11-23
+    const { api, user } = await open(null, async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
+    await fillValidForm(user);
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(sentWeek(api)).toBe('2026-11-23');
+    vi.setSystemTime(new Date('2026-12-08T09:00:00Z')); // "now" would give 2026-12-07
+    api.postPlan.mockImplementationOnce(async () => ok(planResponse));
+    await user.click(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(sentWeek(api, 1)).toBe('2026-11-23');
+  });
+
+  it('repeats the same week on "Try again", even after the calendar has moved on @spec(plan-week/the-client-asks-for-the-right-week/a-retry-keeps-the-week)', async () => {
+    clock('2026-11-29T20:00:00Z'); // Sunday evening
+    const { api, user } = await open(shownWeek('2026-11-23'), async () => apiFail('coach_unavailable', { remainingCallsToday: 5 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(sentWeek(api)).toBe('2026-11-30');
+    vi.setSystemTime(new Date('2026-12-08T09:00:00Z')); // a week later: "now" would give 2026-12-07
+    api.postPlan.mockImplementationOnce(async () => ok(planResponse));
+    await user.click(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(api.postPlan).toHaveBeenCalledTimes(2);
+    expect(sentWeek(api, 1)).toBe('2026-11-30');
+  });
+});
+
+// Task 2.2: the server refuses a week (an old page left open for months, or a clock far off).
+describe('App: a refused week', () => {
+  it('says the week is too far away, highlights no field and offers no retry @spec(plan-week/the-client-asks-for-the-right-week/a-week-that-is-too-far-away-is-explained)', async () => {
+    const { user } = await open(pastedRecord, async () => apiFail('validation_error', { fields: { weekStart: 'The week must start on a Monday, within half a year of today.' } }));
+    await user.click(nextWeek());
+    await user.click(build());
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('That week is too far from today. Use New plan to start from this week.');
+    expect(alert.textContent).not.toMatch(/highlighted/i);
+    expect(within(alert).queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull(); // no control is flagged: the week is not a field
+    // E1b's rule stays: a server field the form has no place for is shown, never hidden, so the server's own sentence
+    // also appears under the form.
+    expect(screen.getByText('The week must start on a Monday, within half a year of today.')).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(alert)); // the alert takes focus: no form field was named
+  });
+});
+
+// Task 2.4 (coach-plan-week-and-delete): the button and its confirmation, as the App wires them. The behaviour of the
+// confirmation itself (focus, the half second, Cancel) is in PlanActions.test.tsx.
+describe('App: the delete button', () => {
+  const deleteButton = () => screen.getByRole('button', { name: 'Delete this plan' });
+
+  it('is offered in the summary card, and the row below holds only "Plan next week" and "New plan" @spec(plan-deletion/delete-button-with-a-confirmation/button-is-offered-with-a-plan)', async () => {
+    await open(pastedRecord);
+    expect(within(screen.getByRole('region', { name: 'Your plan' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Delete this plan']);
+    const outside = screen.getAllByRole('button').filter((b) => !screen.getByRole('region', { name: 'Your plan' }).contains(b));
+    expect(outside.map((b) => b.textContent)).toEqual(['Plan next week', 'New plan']);
+  });
+
+  it('is not offered in the form view, with or without a saved plan @spec(plan-deletion/delete-button-with-a-confirmation/button-is-offered-with-a-plan)', async () => {
+    const { user } = await open(pastedRecord);
+    await user.click(newPlan());
+    expect(screen.queryByRole('button', { name: 'Delete this plan' })).toBeNull();
+    cleanup();
+    await open(null);
+    expect(screen.queryByRole('button', { name: 'Delete this plan' })).toBeNull();
+  });
+
+  it('is not offered while the saved plan loads @spec(plan-deletion/delete-button-with-a-confirmation/button-is-offered-with-a-plan)', () => {
+    const api = { getPlan: vi.fn(() => new Promise<never>(() => {})), postPlan: vi.fn(), deletePlan: vi.fn() };
+    render(<App api={api} />);
+    expect(screen.getByRole('status').textContent).toMatch(/loading your saved plan/i);
+    expect(screen.queryByRole('button', { name: 'Delete this plan' })).toBeNull();
+  });
+
+  it('asks first: the question opens in the card and nothing is sent @spec(plan-deletion/delete-button-with-a-confirmation/confirmation-comes-first)', async () => {
+    const { api, user } = await open(pastedRecord);
+    await user.click(deleteButton());
+    expect(screen.getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy();
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Cancel', 'Delete plan', 'Plan next week', 'New plan']);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
+    expect(within(screen.getByRole('region', { name: 'Your plan' })).getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy(); // the question is in the card
+    expect(api.deletePlan).not.toHaveBeenCalled();
+    expect(api.postPlan).not.toHaveBeenCalled();
+    expect(screen.getByRole('region', { name: 'Your plan' })).toBeTruthy(); // the plan is still shown
+  });
+
+  it('keeps the plan on Cancel, with the trash button back and focus on it @spec(plan-deletion/delete-button-with-a-confirmation/cancel-keeps-the-plan)', async () => {
+    const { api, user } = await open(pastedRecord);
+    await user.click(deleteButton());
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
+    expect(document.activeElement).toBe(deleteButton());
+    expect(api.deletePlan).not.toHaveBeenCalled();
+    expect(screen.getByRole('region', { name: 'Your plan' })).toBeTruthy();
+  });
+});
+
+// Task 2.5 (coach-plan-week-and-delete): "Delete plan" sends the deletion and every outcome has its own screen. Only Date
+// is faked, so the half second after the question opens can pass without waiting.
+describe('App: deleting the shown plan', () => {
+  const NOT_DELETED = 'The plan could not be deleted. Nothing was changed. You can try again.';
+  const MAYBE_DELETED = 'The plan may already be deleted. Reload the page to check, or try again.';
+  const buttonNames = () => screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent); // the icon button has no text
+  const gate = () => { let resolve!: (r: Awaited<ReturnType<Api['deletePlan']>>) => void; const p = new Promise<Awaited<ReturnType<Api['deletePlan']>>>((r) => { resolve = r; }); return { p, resolve }; };
+
+  // Opens the question and lets the half second pass, so the next press on "Delete plan" counts.
+  async function ask(user: ReturnType<typeof userEvent.setup>) {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-26T12:00:00Z'));
+    await user.click(screen.getByRole('button', { name: 'Delete this plan' }));
+    act(() => { vi.setSystemTime(Date.now() + 600); });
+  }
+  const yes = () => screen.getByRole('button', { name: 'Delete plan' });
+
+  it('sends the deletion of the shown plan, by its id, and nothing else @spec(plan-deletion/delete-button-with-a-confirmation/the-deletion-names-the-shown-plan)', async () => {
+    const { api, user } = await open({ ...pastedRecord, id: 41 });
+    await ask(user);
+    await user.click(yes());
+    expect(api.deletePlan).toHaveBeenCalledTimes(1);
+    expect(api.deletePlan).toHaveBeenCalledWith(41);
+    expect(api.postPlan).not.toHaveBeenCalled(); // the coach is never asked
+  });
+
+  it('names the plan made in this visit, not an older stored one @spec(plan-deletion/delete-button-with-a-confirmation/the-deletion-names-the-shown-plan)', async () => {
+    const { api, user } = await open({ ...pastedRecord, id: 3 }, async () => ok({ ...planResponse, id: 9 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    await screen.findByRole('region', { name: 'Your plan' });
+    await ask(user);
+    await user.click(yes());
+    expect(api.deletePlan).toHaveBeenCalledWith(9);
+  });
+
+  it('clears the plan and opens the empty form with its heading focused @spec(plan-deletion/delete-button-with-a-confirmation/confirming-deletes-the-plan-and-opens-a-new-form)', async () => {
+    const { api, user } = await open(pastedRecord);
+    await ask(user);
+    await user.click(yes());
+    expect(await screen.findByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    expect(planRegion()).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'New plan' })));
+    expect((screen.getByLabelText(/goal/i) as HTMLTextAreaElement).value).toBe(''); // no answers of the deleted plan
+    expect(screen.queryByLabelText(/week of your plan/i)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'My plan' })).toBeNull(); // nothing to go back to
+    expect(api.postPlan).not.toHaveBeenCalled();
+  });
+
+  it('does not bring an older stored plan back until the page is reloaded @spec(plan-deletion/delete-button-with-a-confirmation/an-older-plan-can-remain-stored)', async () => {
+    const { api, user } = await open(pastedRecord, async () => ok({ ...planResponse, id: 9 }));
+    await user.click(nextWeek());
+    await user.click(build());
+    await screen.findByRole('region', { name: 'Your plan' });
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('heading', { level: 2, name: 'New plan' });
+    expect(planRegion()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'My plan' })).toBeNull(); // neither the deleted plan nor the older one can be opened
+    expect(api.getPlan).toHaveBeenCalledTimes(1); // the older plan is read again only by a reload
+  });
+
+  it('treats a plan that is already gone (404) as deleted @spec(plan-deletion/delete-button-with-a-confirmation/a-plan-that-is-already-gone-counts-as-deleted)', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('not_found'));
+    await ask(user);
+    await user.click(yes());
+    expect(await screen.findByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    expect(planRegion()).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('sends one request however often "Delete plan" is pressed, and disables both buttons while it runs @spec(plan-deletion/delete-button-with-a-confirmation/one-request-however-often-it-is-pressed)', async () => {
+    const { api, user } = await open(pastedRecord);
+    const g = gate();
+    api.deletePlan.mockReturnValueOnce(g.p);
+    await ask(user);
+    const button = yes();
+    act(() => { button.click(); button.click(); }); // two presses before the screen has changed
+    expect(api.deletePlan).toHaveBeenCalledTimes(1);
+    expect((yes() as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(yes());
+    expect(api.deletePlan).toHaveBeenCalledTimes(1);
+    await act(async () => { g.resolve(ok(undefined)); });
+    expect(await screen.findByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    expect(api.deletePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the plan and says nothing was changed after a server error, with focus on the alert @spec(plan-deletion/delete-button-with-a-confirmation/a-failed-deletion-keeps-the-plan)', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(NOT_DELETED);
+    expect(planRegion()).toBeTruthy();
+    expect(planRegion()?.contains(alert)).toBe(true); // the alert is in the summary card, next to the trash button
+    expect(buttonNames()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+
+  it('says the same after any other error the server sends, such as a refused id @spec(plan-deletion/delete-button-with-a-confirmation/a-failed-deletion-keeps-the-plan)', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('validation_error', { fields: { id: 'bad' } }));
+    await ask(user);
+    await user.click(yes());
+    expect((await screen.findByRole('alert')).textContent).toContain(NOT_DELETED);
+    expect(planRegion()).toBeTruthy();
+  });
+
+  it.each([['network'], ['timeout']] as const)('says the plan may already be deleted after a %s failure, and keeps the plan @spec(plan-deletion/delete-button-with-a-confirmation/a-deletion-that-may-have-happened-says-so)', async (kind) => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce({ ok: false, failure: { kind } });
+    await ask(user);
+    await user.click(yes());
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(MAYBE_DELETED);
+    expect(planRegion()).toBeTruthy();
+    expect(buttonNames()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
+    await waitFor(() => expect(document.activeElement).toBe(alert));
+  });
+
+  it('lets the athlete try again after a failure, and the alert goes @spec(plan-deletion/delete-button-with-a-confirmation/a-failed-deletion-keeps-the-plan)', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    await ask(user); // a second attempt starts from "Delete this plan" again
+    await user.click(yes());
+    expect(await screen.findByRole('heading', { level: 2, name: 'New plan' })).toBeTruthy();
+    expect(api.deletePlan).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('puts focus on the alert again when a second attempt fails too', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValue(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    await user.click(screen.getByRole('button', { name: 'Delete this plan' })); // focus leaves the alert
+    act(() => { vi.setSystemTime(Date.now() + 600); });
+    await user.click(yes());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('alert')));
+  });
+
+  it('clears the alert on every change of view', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    await user.click(newPlan());
+    expect(screen.queryByText(NOT_DELETED)).toBeNull();
+    await user.click(myPlan());
+    expect(screen.queryByText(NOT_DELETED)).toBeNull();
+    expect(planRegion()).toBeTruthy();
+  });
+
+  it('drops the confirmation on a failure, so the athlete is not left on a question that has been answered', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    expect(screen.queryByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeNull();
+  });
+
+  it.each([['Plan next week'], ['New plan']])('closes an open question when "%s" is pressed, and it does not come back @spec(plan-deletion/delete-button-with-a-confirmation/cancel-keeps-the-plan)', async (name) => {
+    const { api, user } = await open(pastedRecord);
+    await user.click(screen.getByRole('button', { name: 'Delete this plan' }));
+    expect(screen.getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name }));
+    await user.click(myPlan());
+    expect(screen.queryByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete this plan' })).toBeTruthy();
+    expect(api.deletePlan).not.toHaveBeenCalled();
+  });
+
+  it('keeps "Plan next week" and "New plan" disabled while a deletion runs, and enables them again after a failure', async () => {
+    const { api, user } = await open(pastedRecord);
+    const g = gate();
+    api.deletePlan.mockReturnValueOnce(g.p);
+    await ask(user);
+    await user.click(yes());
+    expect((nextWeek() as HTMLButtonElement).disabled).toBe(true);
+    expect((newPlan() as HTMLButtonElement).disabled).toBe(true);
+    await user.click(newPlan()); // nothing happens: the plan being deleted stays in view until the answer
+    expect(planRegion()).toBeTruthy();
+    await act(async () => { g.resolve(apiFail('server_error')); });
+    await screen.findByRole('alert');
+    expect((nextWeek() as HTMLButtonElement).disabled).toBe(false);
+    expect((newPlan() as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does not show the old failure alert beside the question when the athlete tries again', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    await user.click(screen.getByRole('button', { name: 'Delete this plan' }));
+    expect(screen.getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

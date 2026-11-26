@@ -81,7 +81,9 @@ test('the keyboard alone fills the form, submits it and reaches "Plan next week"
   await expect(page.getByRole('heading', { level: 2, name: 'Your plan' })).toBeFocused(); // the view's heading, without a pointer
 
   await key('Tab');
-  await expect(page.getByRole('button', { name: 'Plan next week' })).toBeFocused(); // one Tab from the heading
+  await expect(page.getByRole('button', { name: 'Delete this plan' })).toBeFocused(); // one Tab from the heading: the trash button in the card header
+  await key('Tab');
+  await expect(page.getByRole('button', { name: 'Plan next week' })).toBeFocused();
   await key('Enter');
   await expect(page.getByRole('heading', { level: 2, name: 'New plan' })).toBeFocused();
 });
@@ -140,7 +142,7 @@ test('every focus stop in the form view and the plan view shows a visible ring @
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Your plan' })).toBeVisible();
   const planStops = await focusRings(page, 'New plan');
-  expect(planStops.map((s) => s.name)).toEqual(['button "Plan next week"', 'button "New plan"']);
+  expect(planStops.map((s) => s.name)).toEqual(['button "Delete this plan"', 'button "Plan next week"', 'button "New plan"']);
   expect(planStops.filter((s) => !s.ok), JSON.stringify(planStops)).toEqual([]);
 });
 

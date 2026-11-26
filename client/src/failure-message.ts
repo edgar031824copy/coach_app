@@ -17,13 +17,20 @@ export function describeFailure(failure: ApiFailure): FailureNotice {
     return { message: 'The coach took too long to answer. Your plan may still have been saved: reload the page to check, or try again.', canRetry: true, limitNote: null };
   }
 
-  const { error, message, remainingCallsToday } = failure.error;
+  const { error, message, remainingCallsToday, fields } = failure.error;
   const lastCallUsed = remainingCallsToday === 0;
   switch (error) {
     case 'not_found':
       return { message: 'The plan was not found.', canRetry: false, limitNote: null };
-    case 'validation_error':
+    case 'validation_error': {
+      // The week is not a field of the form, so there is nothing to highlight: say what to do instead. A retry would send
+      // the same week and be refused again.
+      const names = Object.keys(fields ?? {});
+      if (names.length === 1 && names[0] === 'weekStart') {
+        return { message: 'That week is too far from today. Use New plan to start from this week.', canRetry: false, limitNote: null };
+      }
       return { message: 'Some answers need fixing. Check the highlighted fields.', canRetry: false, limitNote: null };
+    }
     case 'daily_limit_reached':
       return { message: 'Daily limit reached. The coach can build more plans tomorrow.', canRetry: false, limitNote: null };
     case 'plan_unreadable':

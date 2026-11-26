@@ -13,7 +13,7 @@ const onboarding = {
   runningDays: ['mon', 'wed'], crossfitDays: ['tue'], existingRunningPlan: null, pastedPlanWeek: null,
   weeklyTraining: null, targetEvent: null,
 };
-const record = { id: 1, plan, onboarding, createdAt: '2026-11-08T10:00:00.000Z' };
+const record = { id: 1, plan, onboarding, createdAt: '2026-11-08T10:00:00.000Z', weekStart: '2026-11-02' };
 
 // One accepted and one rejected sample per schema.
 const cases: [string, ZodType, unknown, unknown][] = [
@@ -51,5 +51,28 @@ describe('shared schemas', () => {
     expect(parsed.pastedPlanWeek).toBeNull();
     expect(parsed.weeklyTraining).toBeNull();
     expect(parsed.targetEvent).toBeNull();
+  });
+});
+
+// Task 1.2 (coach-plan-week-and-delete): every plan record has a week.
+describe('plan week', () => {
+  const withoutWeek: Record<string, unknown> = { ...record };
+  delete withoutWeek.weekStart;
+
+  it('requires weekStart on a plan record and on a plan response', () => {
+    expect(PlanRecordSchema.safeParse(withoutWeek).success).toBe(false);
+    expect(PlanResponseSchema.safeParse({ ...withoutWeek, remainingCallsToday: 1 }).success).toBe(false);
+    expect(PlanRecordSchema.parse(record).weekStart).toBe('2026-11-02');
+  });
+
+  it('refuses a weekStart that is not a YYYY-MM-DD date', () => {
+    for (const bad of ['', 'next monday', '2026-11-23T00:00:00Z', '23/11/2026']) expect(PlanRecordSchema.safeParse({ ...record, weekStart: bad }).success, bad).toBe(false);
+  });
+});
+
+// Task 1.4 (coach-plan-week-and-delete): a plan that is not stored has its own error code.
+describe('not_found', () => {
+  it('is an accepted error code', () => {
+    expect(ApiErrorSchema.safeParse({ error: 'not_found', message: 'There is no such plan.' }).success).toBe(true);
   });
 });

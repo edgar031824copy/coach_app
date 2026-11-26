@@ -55,6 +55,7 @@ export const PlanRecordSchema = z.object({
   plan: PlanSchema,
   onboarding: OnboardingSchema,
   createdAt: z.string(),
+  weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // the Monday of the week the plan is for, YYYY-MM-DD
 });
 
 export const PlanResponseSchema = PlanRecordSchema.extend({ remainingCallsToday: z.number().int() });
@@ -66,6 +67,7 @@ export const ApiErrorSchema = z.object({
     'coach_unavailable',
     'invalid_coach_response',
     'plan_unreadable',
+    'not_found',
     'server_error',
   ]),
   message: z.string(),
@@ -86,3 +88,4 @@ export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 // The onboarding rules live here, not in the server, so the form and the API check the same thing (task 6.2).
 export * from './onboarding.js';
+export * from './week.js';

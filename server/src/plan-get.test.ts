@@ -75,6 +75,9 @@ describe('GET /api/plan', () => {
       async latest() {
         throw new Error('database unreachable: secret detail');
       },
+      async delete() {
+        throw new Error('unused');
+      },
     };
     h = await appHarness({ coach, store: brokenStore });
     const res = await h.get();

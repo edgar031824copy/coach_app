@@ -4,6 +4,7 @@ import { createPlanStore } from './plan-store.js';
 import { migratedClient } from '../../test/real-db.js';
 import { onboardingFixture, planFixture } from '../../test/fixtures.js';
 
+const WEEK = '2026-11-23'; // a Monday
 let db: Awaited<ReturnType<typeof migratedClient>>;
 beforeEach(async () => {
   db = await migratedClient();
@@ -22,7 +23,7 @@ const seed = (goal: string, createdAt: string) =>
 describe('plan store: save', () => {
   it('saves a plan together with its onboarding and returns the record @spec(plan-storage/save-only-valid-plans/valid-plan-is-saved-with-its-onboarding)', async () => {
     const store = createPlanStore(db.client);
-    const record = await store.save(planFixture, onboardingFixture);
+    const record = await store.save(planFixture, onboardingFixture, WEEK);
 
     expect(PlanRecordSchema.safeParse(record).success).toBe(true);
     expect(record.plan).toEqual(planFixture);
@@ -38,8 +39,8 @@ describe('plan store: save', () => {
     // Structural validity only: the business rules (seven days and so on) are validateCoachResponse in group 4,
     // and "store empty after any coach failure" is tested through the endpoint in task 5.1.
     const store = createPlanStore(db.client);
-    await expect(store.save({ days: 'none' } as unknown as Plan, onboardingFixture)).rejects.toThrow();
-    await expect(store.save(planFixture, { goal: 'only a goal' } as never)).rejects.toThrow();
+    await expect(store.save({ days: 'none' } as unknown as Plan, onboardingFixture, WEEK)).rejects.toThrow();
+    await expect(store.save(planFixture, { goal: 'only a goal' } as never, WEEK)).rejects.toThrow();
     expect(await count()).toBe(0);
   });
 });
@@ -70,8 +71,8 @@ describe('plan store: latest', () => {
 
   it('after two saves through the store, returns the second and keeps the first stored', async () => {
     const store = createPlanStore(db.client);
-    await store.save({ ...planFixture, recommendations: ['one'] }, onboardingFixture);
-    const second = await store.save({ ...planFixture, recommendations: ['two'] }, onboardingFixture);
+    await store.save({ ...planFixture, recommendations: ['one'] }, onboardingFixture, WEEK);
+    const second = await store.save({ ...planFixture, recommendations: ['two'] }, onboardingFixture, WEEK);
     expect((await store.latest())?.id).toBe(second.id);
     expect(await count()).toBe(2);
   });

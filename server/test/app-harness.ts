@@ -35,8 +35,10 @@ export async function appHarness(options: {
     app,
     post: (body: unknown) => request(app).post('/api/plan').send(body as object),
     get: () => request(app).get('/api/plan'),
+    del: (id: string | number) => request(app).delete(`/api/plan/${id}`),
     plans: async () => (await db.client.query('select count(*)::int as n from plans')).rows[0]?.n as number,
     latestId: async () => Number((await db.client.query('select id from plans order by created_at desc, id desc limit 1')).rows[0]?.id),
+    rows: async (sql: string) => (await db.client.query(sql)).rows,
     calls: async () => ((await db.client.query('select calls from coach_call_counts')).rows[0]?.calls ?? 0) as number,
     cleanup: db.cleanup,
   };

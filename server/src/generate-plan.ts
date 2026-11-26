@@ -33,7 +33,7 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 // validate (done by the caller) -> reserve a cap slot -> call the coach -> validate the response -> save -> respond.
 // Failure mapping (specs/plan-generation, distinct failure outcomes): nothing is saved on any failure, and a slot
 // reserved before a failure stays counted. Log lines carry error names only, never the athlete's text or a plan.
-export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding): Promise<Outcome> {
+export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding, week: string): Promise<Outcome> {
   const now = deps.now ?? (() => new Date());
 
   // 1. Reserve a slot before spending anything. A failing reservation spends nothing and counts nothing.
@@ -88,7 +88,7 @@ export async function generatePlan(deps: GenerateDeps, onboarding: Onboarding): 
 
   // 4. Save, then answer. A failed save leaves nothing behind, and the reserved slot still counts.
   try {
-    const record = await deps.store.save(parsed.data.plan, onboarding);
+    const record = await deps.store.save(parsed.data.plan, onboarding, week);
     return { status: 200, body: { ...record, remainingCallsToday } };
   } catch (err) {
     logError('saving the plan failed', err);

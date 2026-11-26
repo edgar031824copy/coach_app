@@ -22,7 +22,7 @@ const write = (name: string, sql: string) => writeFileSync(join(dir, name), sql)
 
 describe('migrate', () => {
   it('applies the first migration: plans and coach_call_counts exist', async () => {
-    expect(await migrate(db.client, MIGRATIONS)).toEqual(['001_init.sql']);
+    expect(await migrate(db.client, MIGRATIONS)).toEqual(['001_init.sql', '002_plan_week.sql']);
     await db.client.query('insert into plans(plan, onboarding) values ($1, $2)', ['{}', '{}']);
     await db.client.query("insert into coach_call_counts(day, calls) values ('2026-11-08', 1)");
     expect((await db.client.query('select count(*)::int as n from plans')).rows[0].n).toBe(1);
@@ -32,7 +32,7 @@ describe('migrate', () => {
     await migrate(db.client, MIGRATIONS);
     expect(await migrate(db.client, MIGRATIONS)).toEqual([]);
     const { rows } = await db.client.query('select name from schema_migrations order by name');
-    expect(rows).toEqual([{ name: '001_init.sql' }]);
+    expect(rows).toEqual([{ name: '001_init.sql' }, { name: '002_plan_week.sql' }]);
   });
 
   it('runs only new files, in name order, and ignores other files', async () => {

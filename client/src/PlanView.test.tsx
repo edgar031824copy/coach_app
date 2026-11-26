@@ -14,6 +14,7 @@ const record = (
 ): PlanRecord => ({
   id: 1,
   createdAt: '2026-11-13T10:00:00.000Z',
+  weekStart: '2026-11-09',
   onboarding: { ...onboarding, pastedPlanWeek: extra.pastedPlanWeek ?? null },
   plan: {
     days: (extra.order ?? ORDER).map((day): PlanDay => ({ day, sessions: sessions[day] ?? [], combinedLoadNote: extra.notes?.[day] ?? null })),

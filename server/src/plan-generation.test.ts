@@ -173,6 +173,9 @@ describe('POST /api/plan: failures', () => {
       async latest() {
         return null;
       },
+      async delete() {
+        return false;
+      },
     };
     h = await appHarness({ coach, limit: 5, store: brokenStore });
     const error = await failed(await h.post(body), 500, 'server_error');

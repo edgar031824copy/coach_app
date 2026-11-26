@@ -17,6 +17,7 @@ export const onboarding: Onboarding = {
 export const planResponse: PlanResponse = {
   id: 1,
   createdAt: '2026-11-13T10:00:00.000Z',
+  weekStart: '2026-11-09',
   onboarding,
   remainingCallsToday: 19,
   plan: {
@@ -46,6 +47,7 @@ import type { Api, ApiResult } from './api.js';
 export const planRecord = (change: Partial<Onboarding> = {}): PlanRecord => ({
   id: 1,
   createdAt: planResponse.createdAt,
+  weekStart: planResponse.weekStart,
   onboarding: { ...onboarding, ...change },
   plan: planResponse.plan,
 });

@@ -23,6 +23,7 @@ export function savedPlan(options: { longText?: boolean } = {}) {
   return {
     id: 1,
     createdAt: '2026-11-25T10:00:00.000Z',
+    weekStart: '2026-11-23',
     onboarding: {
       goal: 'Finish a 10k', runningLevel: 'intermediate', crossfitLevel: 'intermediate', injuries: 'sore knee',
       runningDays: ['mon', 'tue', 'thu', 'sat'], crossfitDays: ['tue', 'wed', 'fri'],

@@ -4,6 +4,17 @@ import { fillForm, mockPost, mockSavedPlan, openAllParts, savedPlan } from './ui
 // The views and states every interface check walks through. Each `open` returns once the state is on screen.
 export const apiError = (error: string, extra: Record<string, unknown> = {}) => ({ status: error === 'validation_error' ? 400 : error === 'daily_limit_reached' ? 429 : 502, body: { error, message: `server says ${error}`, remainingCallsToday: 2, ...extra } });
 
+// The plan view after "Delete plan" was pressed and the deletion failed: the server answered with an error, or nothing came
+// back. The half second that ignores a stray second click has to pass first.
+async function openFailedDeletion(p: Page, how: 'server' | 'network') {
+  await mockSavedPlan(p, savedPlan());
+  await p.route('**/api/plan/*', (route) => (how === 'network' ? route.abort('failed') : route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'server_error', message: 'server says server_error' }) })));
+  await p.goto('/');
+  await p.getByRole('button', { name: 'Delete this plan' }).click();
+  await p.waitForTimeout(600);
+  await p.getByRole('button', { name: 'Delete plan' }).click();
+}
+
 // Starts a state and waits until it shows. Each returns after the state is on screen.
 export const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: 'loading the saved plan', open: async (p) => { await mockSavedPlan(p, null, 4000); await p.goto('/'); await expect(p.getByText('Loading your saved plan…')).toBeVisible(); } },
@@ -13,6 +24,9 @@ export const STATES: { name: string; open: (page: Page) => Promise<void> }[] = [
   { name: 'a failed read', open: async (p) => { await mockSavedPlan(p, 'fail'); await p.goto('/'); await expect(p.getByText('Could not load your saved plan.')).toBeVisible(); } },
   { name: 'the plan view', open: async (p) => { await mockSavedPlan(p, savedPlan()); await p.goto('/'); await expect(p.getByRole('region', { name: 'Your plan' })).toBeVisible(); } },
   { name: 'the plan view with a 400-character description', open: async (p) => { await mockSavedPlan(p, savedPlan({ longText: true })); await p.goto('/'); await expect(p.getByRole('region', { name: 'Your plan' })).toBeVisible(); } },
+  { name: 'the plan view with the deletion confirmation', open: async (p) => { await mockSavedPlan(p, savedPlan()); await p.goto('/'); await p.getByRole('button', { name: 'Delete this plan' }).click(); await expect(p.getByText(/Delete the plan for the week of/)).toBeVisible(); } },
+  { name: 'a failed deletion (the server says no)', open: async (p) => { await openFailedDeletion(p, 'server'); await expect(p.getByRole('alert')).toContainText('The plan could not be deleted'); } },
+  { name: 'a deletion that may have happened (no answer)', open: async (p) => { await openFailedDeletion(p, 'network'); await expect(p.getByRole('alert')).toContainText('The plan may already be deleted'); } },
   { name: 'building the plan', open: async (p) => { await mockSavedPlan(p, null); await mockPost(p, { delayMs: 5000 }); await p.goto('/'); await fillForm(p); await p.getByRole('button', { name: 'Build my plan' }).click(); await expect(p.getByText('Building your plan…')).toBeVisible(); } },
   { name: 'waking up the coach', open: async (p) => { await mockSavedPlan(p, null); await mockPost(p, { delayMs: 8000 }); await p.goto('/'); await fillForm(p); await p.getByRole('button', { name: 'Build my plan' }).click(); await expect(p.getByText(/Waking up the coach/)).toBeVisible({ timeout: 6000 }); } },
   { name: 'a failure with Try again', open: async (p) => { await mockSavedPlan(p, null); await mockPost(p, apiError('coach_unavailable')); await p.goto('/'); await fillForm(p); await p.getByRole('button', { name: 'Build my plan' }).click(); await expect(p.getByRole('alert')).toContainText('Nothing was saved'); } },

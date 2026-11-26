@@ -145,6 +145,6 @@ describe('the delete control in the summary card', () => {
   it('shows a failure notice as an alert inside the card @spec(plan-deletion/delete-button-with-a-confirmation/a-failed-deletion-keeps-the-plan)', () => {
     render(<Harness onConfirm={vi.fn()} notice={{ text: 'The plan could not be deleted. Nothing was changed. You can try again.' }} />);
     expect(card().getByRole('alert').textContent).toContain('The plan could not be deleted.');
-    expect(trash()).toBeTruthy(); // the trash button is back beside it
+    expect(trash()).toBeTruthy(); // the trash button is still there beside it
   });
 });

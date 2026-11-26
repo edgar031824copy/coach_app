@@ -97,7 +97,8 @@ export function App({ api = defaultApi }: { api?: Api }) {
     }
   };
 
-  // Deleting the shown plan (by its id, whatever else is stored). Success, or "already gone", clears the plan and opens an
+  // Deleting the shown plan (by its id, whatever else is stored). While it runs the plan stays in view and the buttons that
+  // leave it are disabled, so an answer can never land on another plan. Success, or "already gone", clears the plan and opens an
   // empty form; the older plan, if there is one, comes back only on a reload. An answer from the server that is an error
   // means nothing changed; no answer at all means it may have happened.
   const deleteShown = async (id: number) => {
@@ -158,14 +159,14 @@ export function App({ api = defaultApi }: { api?: Api }) {
               deleting,
               notice: deleteNotice,
               noticeRef: deleteAlert,
-              onAsk: () => setConfirming(true),
+              onAsk: () => { setDeleteNotice(null); setConfirming(true); }, // an old failure does not sit beside a new question
               onCancel: () => setConfirming(false),
               onConfirm: () => void deleteShown(shown.id),
             }}
           />
           <div className="mt-7 flex flex-wrap gap-3">
-            <Button type="button" onClick={() => go('form', nextWeekSeed(shown.onboarding), nextWeekStart(shown.weekStart, new Date()))}>Plan next week</Button>
-            <Button type="button" variant="outline" onClick={() => go('form')}>New plan</Button>
+            <Button type="button" disabled={deleting} onClick={() => go('form', nextWeekSeed(shown.onboarding), nextWeekStart(shown.weekStart, new Date()))}>Plan next week</Button>
+            <Button type="button" variant="outline" disabled={deleting} onClick={() => go('form')}>New plan</Button>
           </div>
         </>
       )}

@@ -44,8 +44,8 @@ describe('Button (shadcn setup)', () => {
 // white text as the primary button; its pair is listed and computed in tokens.test.ts.
 describe('Button: danger variant', () => {
   it('uses the error token with the on-accent text color, and no transparency blend', () => {
-    render(<Button variant="danger">Yes, delete</Button>);
-    const classes = screen.getByRole('button', { name: 'Yes, delete' }).className.split(/\s+/);
+    render(<Button variant="danger">Delete plan</Button>);
+    const classes = screen.getByRole('button', { name: 'Delete plan' }).className.split(/\s+/);
     expect(classes).toEqual(expect.arrayContaining(['bg-error', 'border-error', 'text-primary-foreground']));
     expect(classes.some((c) => /^hover:bg-error\/\d+$/.test(c))).toBe(false); // a blend would lower the contrast of the white text
   });

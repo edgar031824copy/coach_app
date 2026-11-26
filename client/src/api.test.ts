@@ -114,6 +114,18 @@ describe('api: deletePlan', () => {
     expect(call.value).toEqual({ ok: false, failure: { kind: 'timeout' } });
   });
 
+  it('does not take a 200 whose body is not JSON as a deletion (a static host answering with its page)', async () => {
+    const page = (async () => new Response('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch;
+    const r = await createApi({ fetchFn: page }).deletePlan(7);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.failure.kind).toBe('api'); // "the server sent an unexpected response", so the plan is not cleared
+  });
+
+  it('does not take a 200 with an empty body as a deletion either: only 204 is the success answer', async () => {
+    const empty = (async () => new Response(null, { status: 200 })) as unknown as typeof fetch;
+    expect((await createApi({ fetchFn: empty }).deletePlan(7)).ok).toBe(false);
+  });
+
   it('does not trust a 200 that carries a body: the success answer is empty', async () => {
     const r = await createApi({ fetchFn: delayedFetch(0, 200, { surprise: true }) }).deletePlan(7);
     expect(r.ok).toBe(false);

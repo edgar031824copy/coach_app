@@ -26,7 +26,7 @@ const unexpected: ApiFailure = { kind: 'api', error: { error: 'server_error', me
 export function createApi({ baseUrl = '', fetchFn = (...args) => fetch(...args), timeoutMs = REQUEST_TIMEOUT_MS }: ApiOptions = {}) {
   // One request: aborted after `timeoutMs` (covering the body too), the answer checked against the shared schema
   // so a response of the wrong shape is never trusted.
-  async function call<T>(path: string, init: RequestInit, schema: Schema<T>): Promise<ApiResult<T>> {
+  async function call<T>(path: string, init: RequestInit, schema: Schema<T>, successStatus?: number): Promise<ApiResult<T>> {
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
@@ -34,6 +34,7 @@ export function createApi({ baseUrl = '', fetchFn = (...args) => fetch(...args),
       const res = await fetchFn(`${baseUrl}${path}`, { ...init, signal: controller.signal });
       const body: unknown = await res.json().catch(() => undefined);
       if (res.ok) {
+        if (successStatus !== undefined && res.status !== successStatus) return { ok: false, failure: unexpected }; // a page from a static host is a 200, not the 204 the server sends
         const parsed = schema.safeParse(body);
         return parsed.success ? { ok: true, value: parsed.data } : { ok: false, failure: unexpected };
       }
@@ -53,7 +54,7 @@ export function createApi({ baseUrl = '', fetchFn = (...args) => fetch(...args),
     // The latest saved plan, or null before the first one; never calls the coach.
     getPlan: (): Promise<ApiResult<PlanRecord | null>> => call('/api/plan', { method: 'GET' }, PlanRecordSchema.nullable()),
     // Deletes one stored plan by its id. The success answer is an empty 204, so a body is the wrong shape.
-    deletePlan: (id: number): Promise<ApiResult<undefined>> => call(`/api/plan/${id}`, { method: 'DELETE' }, emptyAnswer),
+    deletePlan: (id: number): Promise<ApiResult<undefined>> => call(`/api/plan/${id}`, { method: 'DELETE' }, emptyAnswer, 204),
   };
 }
 

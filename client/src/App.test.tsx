@@ -736,7 +736,7 @@ describe('App: the delete button', () => {
     expect(screen.queryByRole('button', { name: 'Delete this plan' })).toBeNull();
   });
 
-  it('asks first: the question replaces the three buttons and nothing is sent @spec(plan-deletion/delete-button-with-a-confirmation/confirmation-comes-first)', async () => {
+  it('asks first: the question opens in the card and nothing is sent @spec(plan-deletion/delete-button-with-a-confirmation/confirmation-comes-first)', async () => {
     const { api, user } = await open(pastedRecord);
     await user.click(deleteButton());
     expect(screen.getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy();
@@ -764,7 +764,7 @@ describe('App: the delete button', () => {
 describe('App: deleting the shown plan', () => {
   const NOT_DELETED = 'The plan could not be deleted. Nothing was changed. You can try again.';
   const MAYBE_DELETED = 'The plan may already be deleted. Reload the page to check, or try again.';
-  const three = () => screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent); // the icon button has no text
+  const buttonNames = () => screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent); // the icon button has no text
   const gate = () => { let resolve!: (r: Awaited<ReturnType<Api['deletePlan']>>) => void; const p = new Promise<Awaited<ReturnType<Api['deletePlan']>>>((r) => { resolve = r; }); return { p, resolve }; };
 
   // Opens the question and lets the half second pass, so the next press on "Delete plan" counts.
@@ -858,7 +858,7 @@ describe('App: deleting the shown plan', () => {
     expect(alert.textContent).toContain(NOT_DELETED);
     expect(planRegion()).toBeTruthy();
     expect(planRegion()?.contains(alert)).toBe(true); // the alert is in the summary card, next to the trash button
-    expect(three()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
+    expect(buttonNames()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
     await waitFor(() => expect(document.activeElement).toBe(alert));
   });
 
@@ -879,7 +879,7 @@ describe('App: deleting the shown plan', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain(MAYBE_DELETED);
     expect(planRegion()).toBeTruthy();
-    expect(three()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
+    expect(buttonNames()).toEqual(['Delete this plan', 'Plan next week', 'New plan']);
     await waitFor(() => expect(document.activeElement).toBe(alert));
   });
 
@@ -939,5 +939,32 @@ describe('App: deleting the shown plan', () => {
     expect(screen.queryByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Delete this plan' })).toBeTruthy();
     expect(api.deletePlan).not.toHaveBeenCalled();
+  });
+
+  it('keeps "Plan next week" and "New plan" disabled while a deletion runs, and enables them again after a failure', async () => {
+    const { api, user } = await open(pastedRecord);
+    const g = gate();
+    api.deletePlan.mockReturnValueOnce(g.p);
+    await ask(user);
+    await user.click(yes());
+    expect((nextWeek() as HTMLButtonElement).disabled).toBe(true);
+    expect((newPlan() as HTMLButtonElement).disabled).toBe(true);
+    await user.click(newPlan()); // nothing happens: the plan being deleted stays in view until the answer
+    expect(planRegion()).toBeTruthy();
+    await act(async () => { g.resolve(apiFail('server_error')); });
+    await screen.findByRole('alert');
+    expect((nextWeek() as HTMLButtonElement).disabled).toBe(false);
+    expect((newPlan() as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does not show the old failure alert beside the question when the athlete tries again', async () => {
+    const { api, user } = await open(pastedRecord);
+    api.deletePlan.mockResolvedValueOnce(apiFail('server_error'));
+    await ask(user);
+    await user.click(yes());
+    await screen.findByRole('alert');
+    await user.click(screen.getByRole('button', { name: 'Delete this plan' }));
+    expect(screen.getByText('Delete the plan for the week of 9 Nov? This cannot be undone.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

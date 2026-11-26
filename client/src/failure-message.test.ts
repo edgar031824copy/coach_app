@@ -93,3 +93,10 @@ describe('describeFailure: wording', () => {
     expect(message).toMatch(/reload the page/i);
   });
 });
+
+// Task 1.4 (coach-plan-week-and-delete): a plan that no longer exists has its own, plain message and no retry.
+describe('describeFailure: not_found', () => {
+  it('says the plan was not found, with no retry and no limit note', () => {
+    expect(describeFailure(api('not_found'))).toEqual({ message: 'The plan was not found.', canRetry: false, limitNote: null });
+  });
+});

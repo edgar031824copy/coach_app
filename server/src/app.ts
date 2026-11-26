@@ -19,7 +19,7 @@ function cors(clientOrigin: string): express.RequestHandler {
     if (origin !== clientOrigin) return req.method === 'OPTIONS' ? void res.sendStatus(403) : next();
     res.setHeader('Access-Control-Allow-Origin', clientOrigin);
     if (req.method !== 'OPTIONS') return next();
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Max-Age', '600');
     res.sendStatus(204);
@@ -92,6 +92,26 @@ export function createApp(deps?: AppDeps) {
       res.json(await deps.store.latest());
     } catch (err) {
       logError('reading the latest plan failed', err);
+      sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
+    }
+  });
+
+  // Deletes one plan by id and answers 204. The id is a positive whole number without leading zeros and no larger than the
+  // largest safe integer (a longer one would reach Postgres and fail as a 500). Never touches the cap or the coach.
+  app.delete('/api/plan/:id', async (req, res) => {
+    if (!deps) {
+      return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' });
+    }
+    const raw = req.params.id ?? '';
+    const id = Number(raw);
+    if (!/^[1-9][0-9]*$/.test(raw) || !Number.isSafeInteger(id)) {
+      return sendError(res, 400, { error: 'validation_error', message: 'The plan id must be a positive whole number.' });
+    }
+    try {
+      if (!(await deps.store.delete(id))) return sendError(res, 404, { error: 'not_found', message: 'There is no such plan.' });
+      res.status(204).end();
+    } catch (err) {
+      logError('deleting the plan failed', err);
       sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
     }
   });

@@ -67,6 +67,7 @@ export const ApiErrorSchema = z.object({
     'coach_unavailable',
     'invalid_coach_response',
     'plan_unreadable',
+    'not_found',
     'server_error',
   ]),
   message: z.string(),

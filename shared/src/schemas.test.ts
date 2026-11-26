@@ -65,3 +65,10 @@ describe('plan week', () => {
     expect(PlanRecordSchema.parse(record).weekStart).toBe('2026-11-02');
   });
 });
+
+// Task 1.4 (coach-plan-week-and-delete): a plan that is not stored has its own error code.
+describe('not_found', () => {
+  it('is an accepted error code', () => {
+    expect(ApiErrorSchema.safeParse({ error: 'not_found', message: 'There is no such plan.' }).success).toBe(true);
+  });
+});

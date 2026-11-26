@@ -20,6 +20,8 @@ export function describeFailure(failure: ApiFailure): FailureNotice {
   const { error, message, remainingCallsToday } = failure.error;
   const lastCallUsed = remainingCallsToday === 0;
   switch (error) {
+    case 'not_found':
+      return { message: 'The plan was not found.', canRetry: false, limitNote: null };
     case 'validation_error':
       return { message: 'Some answers need fixing. Check the highlighted fields.', canRetry: false, limitNote: null };
     case 'daily_limit_reached':

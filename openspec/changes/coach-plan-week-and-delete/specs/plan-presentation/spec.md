@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Summary of the week
-The plan view SHALL show a summary with the number of running sessions, the number of CrossFit sessions, and the number of rest days, counted from the plan's own sessions and days, and SHALL show "Week N of your running plan" when the pasted-plan week is known. It SHALL also show the week the plan is for as "Week of 23 Nov" (the Monday's day and short English month name) and the day it was made as "Made 26 Nov" (in the athlete's own calendar), for every plan.
+The plan view SHALL show a summary with the number of running sessions, the number of CrossFit sessions, and the number of rest days, counted from the plan's own sessions and days, and SHALL show "Week N of your running plan" when the pasted-plan week is known. It SHALL also show the week the plan is for as "Week of 23 Nov" (the Monday's day and a three-letter English month name: Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec) and the day it was made as "Made 26 Nov" (in the athlete's own calendar), for every plan.
 
 #### Scenario: Counts match the plan
 - **WHEN** a plan has 3 running sessions, 5 CrossFit sessions and 1 rest day
@@ -30,3 +30,7 @@ The plan view SHALL show a summary with the number of running sessions, the numb
 #### Scenario: Date made is in the athlete's calendar
 - **WHEN** a plan was saved at 23:30 UTC on 26 November 2026 and the athlete's time zone is two hours ahead of UTC
 - **THEN** the summary shows "Made 27 Nov"
+
+#### Scenario: Month names have three letters
+- **WHEN** a plan's week starts on 2026-09-07
+- **THEN** the summary shows "Week of 7 Sep"

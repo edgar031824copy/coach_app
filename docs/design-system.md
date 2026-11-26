@@ -108,5 +108,6 @@ Measured by hand: build the client, `gzip -9` each file in `client/dist/assets`,
 |---|---|---|---|
 | Before any dependency of E1b (task 1.1) | 97,380 | 684 | 98,064 |
 | Final (task 4.3) | 111,523 | 4,598 | 116,121 |
+| After `coach-plan-week-and-delete` (task 3.3) | 112,906 | 4,776 | 117,682 |
 
-The increase is 18,057 bytes (18.1 KB) against the 60 KB budget 🔶 that the owner confirmed at G1. Most of it is the three small libraries behind `Button` (`@radix-ui/react-slot`, `class-variance-authority`, `tailwind-merge`, about 12 KB when the first screen started using it), plus Tailwind's reset and the utilities the screens use. No font file and no icon library are shipped.
+The increase is 18,057 bytes (18.1 KB) against the 60 KB budget 🔶 that the owner confirmed at G1. Most of it is the three small libraries behind `Button` (`@radix-ui/react-slot`, `class-variance-authority`, `tailwind-merge`, about 12 KB when the first screen started using it), plus Tailwind's reset and the utilities the screens use. No font file and no icon library are shipped. `coach-plan-week-and-delete` added 1,561 bytes (the week helpers, the delete control, the trash icon, the `danger` variant), so the total is 19,618 bytes (19.6 KB) above the starting point, still under the 60 KB budget.

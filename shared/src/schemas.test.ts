@@ -56,7 +56,8 @@ describe('shared schemas', () => {
 
 // Task 1.2 (coach-plan-week-and-delete): every plan record has a week.
 describe('plan week', () => {
-  const { weekStart: _omitted, ...withoutWeek } = record;
+  const withoutWeek: Record<string, unknown> = { ...record };
+  delete withoutWeek.weekStart;
 
   it('requires weekStart on a plan record and on a plan response', () => {
     expect(PlanRecordSchema.safeParse(withoutWeek).success).toBe(false);

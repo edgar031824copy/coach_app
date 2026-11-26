@@ -11,6 +11,24 @@ test.beforeEach(async () => { await resetDb(); });
 const plan = (page: Page) => page.getByRole('region', { name: 'Your plan' });
 const day = (page: Page, name: string) => page.getByRole('listitem', { name });
 
+// The week and the day a plan was made, as the page writes them ("23 Nov"): the Monday of the current week on the
+// browser's own calendar, plus a number of weeks. The browser and this test run on the same machine, so one clock.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const shortDay = (d: Date) => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+const mondayLabel = (weeksLater = 0) => {
+  const now = new Date();
+  return shortDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7) + 7 * weeksLater));
+};
+const madeLabel = () => `Made ${shortDay(new Date())}`;
+
+// "Delete this plan", then "Delete plan" once the half second that ignores a stray second click has passed.
+async function deleteShownPlan(page: Page) {
+  await page.getByRole('button', { name: 'Delete this plan' }).click();
+  await expect(page.getByText(/Delete the plan for the week of/)).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Delete plan' }).click();
+}
+
 // Fills the onboarding with a pasted running plan and builds the first plan.
 async function buildFirstPlan(page: Page, paste: string) {
   await page.goto('/');
@@ -28,8 +46,11 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   await expect(page.getByRole('button', { name: 'Build my plan' })).toBeVisible();
   await expect(plan(page)).toHaveCount(0); // nothing saved yet
 
+  const thisWeek = mondayLabel(); const nextWeek = mondayLabel(1); const made = madeLabel(); // taken before the page builds them, so a run across midnight compares the same day
   await buildFirstPlan(page, 'Week 1: Mon 5 km easy, Wed 8 km tempo. Week 2: Tue 6 km easy; Thu 10 km long');
   await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${thisWeek}`); // every plan shows its calendar week and the day it was made
+  await expect(plan(page)).toContainText(made);
   await expect(day(page, 'Monday')).toContainText('5 km easy');
   await expect(day(page, 'Monday')).toContainText('from your plan'); // the pasted session, labeled as the athlete's
   await expect(day(page, 'Friday')).toContainText('CrossFit');
@@ -39,6 +60,7 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   // Reload: the same plan comes back from the database, and the coach is not called again.
   await page.reload();
   await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${thisWeek}`); // the stored week, read back as the same date
   await expect(day(page, 'Wednesday')).toContainText('8 km tempo');
   expect(await counts()).toEqual({ plans: 1, calls: 1 });
 
@@ -56,6 +78,7 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   // Submitting it is one normal call: validated, counted toward the cap, answered by the coach, saved.
   await page.getByRole('button', { name: 'Build my plan' }).click();
   await expect(plan(page)).toContainText('Week 2 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${nextWeek}`); // "Plan next week" asks for the following calendar week
   await expect(day(page, 'Tuesday')).toContainText('6 km easy');
   await expect(day(page, 'Monday')).toContainText('Rest day');
   expect(await counts()).toEqual({ plans: 2, calls: 2 });
@@ -63,6 +86,43 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   // The newest plan is the one that comes back after a reload; the first stays stored.
   await page.reload();
   await expect(plan(page)).toContainText('Week 2 of your running plan');
+});
+
+test('a deleted plan is gone from the database and after a reload; an earlier plan is what the reload shows @spec(plan-deletion/delete-button-with-a-confirmation/a-reload-does-not-show-the-deleted-plan) @spec(plan-deletion/delete-button-with-a-confirmation/confirming-deletes-the-plan-and-opens-a-new-form) @spec(plan-deletion/delete-button-with-a-confirmation/an-older-plan-can-remain-stored) @spec(plan-deletion/delete-button-with-a-confirmation/cancel-keeps-the-plan)', async ({ page }) => {
+  await buildFirstPlan(page, 'Week 1: Mon 5 km easy, Wed 8 km tempo. Week 2: Tue 6 km easy; Thu 10 km long');
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await page.getByRole('button', { name: 'Plan next week' }).click();
+  await page.getByRole('button', { name: 'Build my plan' }).click();
+  await expect(plan(page)).toContainText('Week 2 of your running plan');
+  expect(await counts()).toEqual({ plans: 2, calls: 2 });
+
+  // Asking and cancelling changes nothing.
+  await page.getByRole('button', { name: 'Delete this plan' }).click();
+  await expect(page.getByText(/Delete the plan for the week of/)).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: 'Delete this plan' })).toBeFocused();
+  await expect(plan(page)).toContainText('Week 2 of your running plan');
+  expect(await counts()).toEqual({ plans: 2, calls: 2 });
+
+  // Deleting the newest plan: the row is gone, the cap is not refunded, and the empty form opens.
+  await deleteShownPlan(page);
+  await expect(page.getByRole('heading', { level: 2, name: 'New plan' })).toBeFocused();
+  await expect(page.getByLabel('Goal')).toHaveValue('');
+  await expect(plan(page)).toHaveCount(0);
+  expect(await counts()).toEqual({ plans: 1, calls: 2 });
+
+  // The older plan comes back after a reload (it was never deleted); the deleted one does not.
+  await page.reload();
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page)).not.toContainText('Week 2 of your running plan');
+
+  // Deleting that one too leaves nothing: a reload shows the empty form and the database holds no plan.
+  await deleteShownPlan(page);
+  await expect(page.getByRole('heading', { level: 2, name: 'New plan' })).toBeVisible();
+  expect(await counts()).toEqual({ plans: 0, calls: 2 });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Build my plan' })).toBeVisible();
+  await expect(plan(page)).toHaveCount(0);
 });
 
 test('after the daily limit the client says so, with no retry, and nothing more is called @spec(cost-cap/daily-cap/cap-reached)', async ({ page }) => {

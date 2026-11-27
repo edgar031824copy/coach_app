@@ -56,17 +56,6 @@ describe('GET /api/plan', () => {
     expect(await h.calls()).toBe(callsAfterPost); // and never uses the cap
   });
 
-  it('shows the new plan after a second submission and keeps the earlier one stored @spec(plan-storage/submitting-again-replaces-the-shown-plan/second-submission)', async () => {
-    h = await appHarness({ coach });
-    const first = await h.post(body);
-    const second = await h.post({ ...body, goal: 'Run a 10k' });
-    expect(second.body.id).not.toBe(first.body.id);
-    const shown = await h.get();
-    expect(shown.body.id).toBe(second.body.id);
-    expect(shown.body.onboarding.goal).toBe('Run a 10k');
-    expect(await h.plans()).toBe(2); // the earlier plan is still stored, just not shown
-  });
-
   it('returns 500 server_error as an ApiError when the store fails', async () => {
     const brokenStore: PlanStore = {
       async save() {
@@ -74,6 +63,9 @@ describe('GET /api/plan', () => {
       },
       async latest() {
         throw new Error('database unreachable: secret detail');
+      },
+      async list() {
+        throw new Error('unused');
       },
       async delete() {
         throw new Error('unused');

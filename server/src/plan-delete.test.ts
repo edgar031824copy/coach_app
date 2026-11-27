@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import request from 'supertest';
 import { ApiErrorSchema, type Onboarding } from 'shared';
 import type { CoachClient } from './coach/types.js';
@@ -12,6 +12,7 @@ const body = {
 };
 const good = (note: string) => () => ({ ...responseWith({ mon: [session('running')], tue: [session('crossfit')], wed: [session('running')] }), plan: { ...responseWith({ mon: [session('running')], tue: [session('crossfit')], wed: [session('running')] }).plan, recommendations: [note] } });
 let h: Awaited<ReturnType<typeof appHarness>>;
+beforeEach(() => { weeks = 0; });
 afterEach(() => h?.cleanup());
 
 // A coach whose plans can be told apart, and a record of how often it was asked.
@@ -21,7 +22,10 @@ function setup() {
   const coach: CoachClient = { async generate(onboarding) { seen.push(onboarding); n += 1; return good(`plan ${n}`)(); } };
   return { coach, seen };
 }
-const make = async () => Number((await h.post(body)).body.id);
+// One plan per week (migration 003): each plan made here is for a different week, in the order they are made.
+let weeks = 0;
+const nextWeek = () => new Date(Date.UTC(2026, 10, 2 + 7 * weeks++)).toISOString().slice(0, 10);
+const make = async () => Number((await h.post({ ...body, weekStart: nextWeek() })).body.id);
 const ids = async () => (await h.rows('select id from plans order by id')).map((r) => Number(r.id));
 
 describe('DELETE /api/plan/:id', () => {
@@ -116,7 +120,7 @@ describe('DELETE /api/plan/:id', () => {
 
   it('turns a store failure into the usual 500 without any detail', async () => {
     const { coach } = setup();
-    h = await appHarness({ coach, store: { async save() { throw new Error('unused'); }, async latest() { return null; }, async delete() { throw new Error('database unreachable: secret detail'); } } });
+    h = await appHarness({ coach, store: { async save() { throw new Error('unused'); }, async latest() { return null; }, async list() { throw new Error('unused'); }, async delete() { throw new Error('database unreachable: secret detail'); } } });
     const res = await h.del(1);
     expect(res.status).toBe(500);
     expect(ApiErrorSchema.parse(res.body)).toEqual({ error: 'server_error', message: 'Something went wrong.' });

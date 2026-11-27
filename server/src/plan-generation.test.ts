@@ -173,6 +173,9 @@ describe('POST /api/plan: failures', () => {
       async latest() {
         return null;
       },
+      async list() {
+        throw new Error('unused');
+      },
       async delete() {
         return false;
       },

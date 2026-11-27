@@ -79,7 +79,7 @@ describe('logging never contains the athlete\'s text or a plan', () => {
 
     h = await appHarness({
       coach: ok,
-      store: { async save() { throw new Error(`save broke ${PLAN_TEXT}`); }, async latest() { throw new Error(`read broke ${PLAN_TEXT}`); }, async delete() { throw new Error(`delete broke ${PLAN_TEXT}`); } },
+      store: { async save() { throw new Error(`save broke ${PLAN_TEXT}`); }, async latest() { throw new Error(`read broke ${PLAN_TEXT}`); }, async list() { throw new Error(`list broke ${PLAN_TEXT}`); }, async delete() { throw new Error(`delete broke ${PLAN_TEXT}`); } },
     });
     capture();
     expect((await h.post(body)).status).toBe(500);

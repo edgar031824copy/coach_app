@@ -39,13 +39,14 @@ export function savedPlan(options: { longText?: boolean } = {}) {
 
 const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
-// What GET /api/plan answers. `null` is "nothing saved"; 'fail' makes the read fail.
-export async function mockSavedPlan(page: Page, saved: ReturnType<typeof savedPlan> | null | 'fail', delayMs = 0) {
-  await page.route('**/api/plan', async (route) => {
+// What GET /api/plans answers (the page reads the list). `null` is "nothing saved", a record is one stored plan, an array is
+// several (oldest week first); 'fail' makes the read fail.
+export async function mockSavedPlan(page: Page, saved: ReturnType<typeof savedPlan> | ReturnType<typeof savedPlan>[] | null | 'fail', delayMs = 0) {
+  await page.route('**/api/plans', async (route) => {
     if (route.request().method() !== 'GET') return route.fallback();
     if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
     if (page.isClosed()) return; // the test is over; nothing to answer
-    return saved === 'fail' ? route.abort('failed') : json(route, 200, saved);
+    return saved === 'fail' ? route.abort('failed') : json(route, 200, { plans: saved === null ? [] : Array.isArray(saved) ? saved : [saved] });
   });
 }
 

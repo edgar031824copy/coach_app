@@ -99,6 +99,8 @@ In `client/src/components/`, inline SVG, no icon library. They are decoration: `
 | `MoonIcon` | rest days |
 | `WarningIcon` | the safety note and failures |
 | `TrashIcon` | the delete button on the summary card |
+| `ChevronLeftIcon` | the week switcher's "Earlier plan" button |
+| `ChevronRightIcon` | the week switcher's "Later plan" button |
 
 ## Bundle size
 

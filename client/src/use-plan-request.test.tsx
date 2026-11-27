@@ -50,7 +50,7 @@ describe('usePlanRequest: waking state', () => {
   });
 
   it('hands the onboarding and the week to the API, as given', async () => {
-    const api = { getPlan: vi.fn(), deletePlan: vi.fn(), postPlan: vi.fn(async () => ({ ok: true as const, value: planResponse })) };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(), deletePlan: vi.fn(), postPlan: vi.fn(async () => ({ ok: true as const, value: planResponse })) };
     const { result } = renderHook(() => usePlanRequest(api));
     await act(async () => { await result.current.submit(onboarding, '2026-12-07'); });
     expect(api.postPlan).toHaveBeenCalledWith(onboarding, '2026-12-07');

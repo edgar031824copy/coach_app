@@ -8,10 +8,10 @@ import { planRecord } from './test-helpers.js';
 afterEach(() => vi.useRealTimers());
 
 // The confirmation state belongs to the App; this stand-in holds it the same way so the control can be exercised alone.
-function Harness({ onConfirm, deleting = false, notice = null, weekStart }: { onConfirm: () => void; deleting?: boolean; notice?: { text: string } | null; weekStart?: string }) {
+function Harness({ onConfirm, deleting = false, notice = null, weekStart, othersStay = false, status = null }: { onConfirm: () => void; deleting?: boolean; notice?: { text: string } | null; weekStart?: string; othersStay?: boolean; status?: string | null }) {
   const [confirming, setConfirming] = useState(false);
   const record = weekStart ? { ...planRecord(), weekStart } : planRecord(); // the shared fixture's week is 2026-11-09
-  return <PlanView record={record} deletion={{ confirming, deleting, notice, onAsk: () => setConfirming(true), onCancel: () => setConfirming(false), onConfirm }} />;
+  return <PlanView record={record} deletion={{ confirming, deleting, othersStay, status, notice, onAsk: () => setConfirming(true), onCancel: () => setConfirming(false), onConfirm }} />;
 }
 const card = () => within(screen.getByRole('region', { name: 'Your plan' }));
 const trash = () => screen.getByRole('button', { name: 'Delete this plan' });
@@ -135,7 +135,7 @@ describe('the delete control in the summary card', () => {
   });
 
   it('disables both confirmation buttons while the deletion runs @spec(plan-deletion/delete-button-with-a-confirmation/one-request-however-often-it-is-pressed)', () => {
-    const props = { onAsk: () => {}, onCancel: () => {}, onConfirm: () => {}, notice: null };
+    const props = { onAsk: () => {}, onCancel: () => {}, onConfirm: () => {}, notice: null, othersStay: false, status: null };
     const { rerender } = render(<PlanView record={planRecord()} deletion={{ ...props, confirming: true, deleting: false }} />);
     rerender(<PlanView record={planRecord()} deletion={{ ...props, confirming: true, deleting: true }} />);
     expect((cancel() as HTMLButtonElement).disabled).toBe(true);
@@ -146,5 +146,29 @@ describe('the delete control in the summary card', () => {
     render(<Harness onConfirm={vi.fn()} notice={{ text: 'The plan could not be deleted. Nothing was changed. You can try again.' }} />);
     expect(card().getByRole('alert').textContent).toContain('The plan could not be deleted.');
     expect(trash()).toBeTruthy(); // the trash button is still there beside it
+  });
+});
+
+// Task 2.4 (coach-plan-history): the question mentions the other plans, and the status line has a region of its own.
+describe('the delete control: other plans and the status line', () => {
+  it('ends the question with "Your other plans stay." only when other plans are stored @spec(plan-deletion/delete-button-with-a-confirmation/confirmation-comes-first)', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<Harness onConfirm={vi.fn()} othersStay />);
+    await user.click(trash());
+    expect(screen.getByText(`${QUESTION} Your other plans stay.`)).toBeTruthy();
+    unmount();
+    render(<Harness onConfirm={vi.fn()} />);
+    await user.click(trash());
+    expect(screen.getByText(QUESTION)).toBeTruthy();
+    expect(screen.queryByText(/your other plans stay/i)).toBeNull();
+  });
+
+  it('has its status region in the card from the start, empty, and fills it with the text @spec(plan-deletion/delete-button-with-a-confirmation/the-next-later-week-is-shown-first)', () => {
+    const { rerender } = render(<PlanView record={planRecord()} deletion={{ confirming: false, deleting: false, othersStay: true, status: null, notice: null, onAsk() {}, onCancel() {}, onConfirm() {} }} />);
+    const region = card().getByRole('status');
+    expect(region.textContent).toBe(''); // there before the text, so the text is announced when it arrives
+    rerender(<PlanView record={planRecord()} deletion={{ confirming: false, deleting: false, othersStay: true, status: 'Deleted the plan for the week of 23 Nov. Showing the week of 30 Nov.', notice: null, onAsk() {}, onCancel() {}, onConfirm() {} }} />);
+    expect(card().getByRole('status')).toBe(region); // the same element, filled
+    expect(region.textContent).toBe('Deleted the plan for the week of 23 Nov. Showing the week of 30 Nov.');
   });
 });

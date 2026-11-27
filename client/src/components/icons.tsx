@@ -67,3 +67,21 @@ export function TrashIcon(props: React.ComponentProps<"svg">) {
     </Icon>
   )
 }
+
+/** The week switcher: an earlier plan. */
+export function ChevronLeftIcon(props: React.ComponentProps<"svg">) {
+  return (
+    <Icon {...props}>
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </Icon>
+  )
+}
+
+/** The week switcher: a later plan. */
+export function ChevronRightIcon(props: React.ComponentProps<"svg">) {
+  return (
+    <Icon {...props}>
+      <path d="M9.5 5.5 16 12l-6.5 6.5" />
+    </Icon>
+  )
+}

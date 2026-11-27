@@ -19,7 +19,7 @@ describe('docs/design-system.md', () => {
 
   it('names the icons file and each icon', () => {
     expect(DOC).toContain('`icons.tsx`');
-    for (const icon of ['RouteIcon', 'BarbellIcon', 'MoonIcon', 'WarningIcon', 'TrashIcon']) expect(DOC, icon).toContain(icon);
+    for (const icon of ['RouteIcon', 'BarbellIcon', 'MoonIcon', 'WarningIcon', 'TrashIcon', 'ChevronLeftIcon', 'ChevronRightIcon']) expect(DOC, icon).toContain(icon);
   });
 
   it('lists every color token', () => {

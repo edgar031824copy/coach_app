@@ -83,9 +83,13 @@ test('onboarding with a pasted plan, reload, and Plan next week @spec(plan-stora
   await expect(day(page, 'Monday')).toContainText('Rest day');
   expect(await counts()).toEqual({ plans: 2, calls: 2 });
 
-  // The newest plan is the one that comes back after a reload; the first stays stored.
+  // A reload opens the plan of the current week (the first); the plan for next week stays stored, one press of "Later plan" away.
   await page.reload();
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${thisWeek} · 1 of 2`);
+  await page.getByRole('button', { name: 'Later plan' }).click();
   await expect(plan(page)).toContainText('Week 2 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${nextWeek} · 2 of 2`);
 });
 
 test('a deleted plan is gone from the database and after a reload; an earlier plan is what the reload shows @spec(plan-deletion/delete-button-with-a-confirmation/a-reload-does-not-show-the-deleted-plan) @spec(plan-deletion/delete-button-with-a-confirmation/confirming-deletes-the-plan-and-opens-a-new-form) @spec(plan-deletion/delete-button-with-a-confirmation/an-older-plan-can-remain-stored) @spec(plan-deletion/delete-button-with-a-confirmation/cancel-keeps-the-plan)', async ({ page }) => {
@@ -104,14 +108,15 @@ test('a deleted plan is gone from the database and after a reload; an earlier pl
   await expect(plan(page)).toContainText('Week 2 of your running plan');
   expect(await counts()).toEqual({ plans: 2, calls: 2 });
 
-  // Deleting the newest plan: the row is gone, the cap is not refunded, and the empty form opens.
+  // Deleting the newest plan: the row is gone, the cap is not refunded, and the nearest week (the earlier one: none is later)
+  // is shown, with the status line.
   await deleteShownPlan(page);
-  await expect(page.getByRole('heading', { level: 2, name: 'New plan' })).toBeFocused();
-  await expect(page.getByLabel('Goal')).toHaveValue('');
-  await expect(plan(page)).toHaveCount(0);
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page).getByRole('status')).toContainText('Deleted the plan for the week of');
+  await expect(page.getByRole('heading', { level: 2, name: 'Your plan' })).toBeFocused();
   expect(await counts()).toEqual({ plans: 1, calls: 2 });
 
-  // The older plan comes back after a reload (it was never deleted); the deleted one does not.
+  // After a reload the older plan is shown and the deleted one does not come back.
   await page.reload();
   await expect(plan(page)).toContainText('Week 1 of your running plan');
   await expect(plan(page)).not.toContainText('Week 2 of your running plan');

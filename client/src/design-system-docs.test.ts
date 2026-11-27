@@ -42,6 +42,19 @@ describe('the danger button', () => {
   });
 });
 
+// Task 3.3 (coach-plan-history): the switcher, the status line and the replace note are described, with their roles.
+describe('the plan history patterns', () => {
+  it('describes the week switcher, the status line and the replace note', () => {
+    const view = DOC.slice(DOC.indexOf('**Plan view.**'), DOC.indexOf('## ', DOC.indexOf('**Plan view.**')));
+    for (const text of ['week switcher', 'Earlier plan', 'Later plan', 'aria-disabled', 'role="status"', 'role="note"', 'You already have a plan for the week of']) expect(view, text).toContain(text);
+  });
+
+  it('lists the size of the bundle after the change, and the size of the plan list', () => {
+    expect(DOC).toContain('After `coach-plan-history`');
+    expect(DOC).toContain('Size of the plan list');
+  });
+});
+
 // "Styled with tokens only": a Tailwind palette color (bg-blue-500, text-white) would sidestep the token file.
 const PALETTE = /\b(?:bg|text|border|ring|outline|fill|stroke|from|to|via|shadow|divide|decoration)-(?:white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})\b/;
 describe('components/ui', () => {

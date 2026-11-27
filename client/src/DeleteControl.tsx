@@ -12,6 +12,8 @@ export const CONFIRM_GUARD_MS = 500;
 export interface DeletionProps {
   confirming: boolean; // "Delete this plan" was pressed and not yet confirmed or cancelled
   deleting: boolean; // the deletion request is running: both confirmation buttons are disabled
+  othersStay: boolean; // other plans are stored: the question says they stay
+  status: string | null; // "Deleted the plan for the week of ...", shown after a deletion that left another plan in view
   notice: { text: string } | null; // a failed deletion, shown as an alert in the card
   noticeRef?: Ref<HTMLDivElement>; // the App focuses the alert when a failure arrives
   onAsk: () => void;
@@ -41,7 +43,7 @@ export function useDeleteControl(weekLabel: string, deletion: DeletionProps | un
   }, [confirming]);
 
   if (!deletion) return { trigger: null, panel: null };
-  const { deleting, notice, noticeRef, onAsk, onCancel, onConfirm } = deletion;
+  const { deleting, othersStay, status, notice, noticeRef, onAsk, onCancel, onConfirm } = deletion;
 
   const trigger = confirming ? null : (
     <Button type="button" variant="outline" ref={trashButton} aria-label="Delete this plan" title="Delete this plan" className="w-11 shrink-0 px-0 pointer-fine:w-9" onClick={onAsk}>
@@ -50,9 +52,11 @@ export function useDeleteControl(weekLabel: string, deletion: DeletionProps | un
   );
 
   // A non-breaking space keeps "23 Nov" on one line (on a phone the question broke between the day and the month).
-  const question = `Delete the plan for the week of ${weekLabel.replace(' ', ' ')}? This cannot be undone.`;
+  const question = `Delete the plan for the week of ${weekLabel.replace(' ', ' ')}? This cannot be undone.${othersStay ? ' Your other plans stay.' : ''}`;
+  // The status region is in the card from the start and empty, so a screen reader announces the text when it arrives.
   const panel = (
     <>
+      <div role="status" className="empty:sr-only">{status && <Alert>{status}</Alert>}</div>
       {confirming && (
         <div role="group" aria-labelledby="delete-question" className="grid gap-3 rounded-lg border border-border bg-secondary px-3.5 py-3">
           <p id="delete-question" className="m-0 text-base font-semibold">{question}</p>

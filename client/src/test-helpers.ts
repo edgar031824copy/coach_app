@@ -58,10 +58,14 @@ export const apiFail = (error: ApiError['error'], extra: Partial<ApiError> = {})
   failure: { kind: 'api', error: { error, message: `server says ${error}`, ...extra } },
 });
 
-// A fake API whose answers the test chooses; every call is a spy.
-export function fakeApi(saved: PlanRecord | null, post: Api['postPlan'] = async () => ok(planResponse)) {
+// A fake API whose answers the test chooses; every call is a spy. `saved` is what GET /api/plans holds: one plan, a list
+// (in the order the server sends it, oldest week first) or none. The client no longer calls getPlan; its spy is there so a
+// test can say so.
+export function fakeApi(saved: PlanRecord | PlanRecord[] | null, post: Api['postPlan'] = async () => ok(planResponse)) {
+  const list = saved === null ? [] : Array.isArray(saved) ? saved : [saved];
   return {
-    getPlan: vi.fn(async () => ok(saved)),
+    getPlans: vi.fn(async () => ok(list)),
+    getPlan: vi.fn(async () => ok(list.at(-1) ?? null)),
     postPlan: vi.fn(post),
     deletePlan: vi.fn<Api["deletePlan"]>(async () => ok(undefined)),
   } satisfies Api;

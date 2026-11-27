@@ -131,3 +131,43 @@ describe('api: deletePlan', () => {
     expect(r.ok).toBe(false);
   });
 });
+
+// Task 2.1 (coach-plan-history): reading every stored plan.
+describe('api: getPlans', () => {
+  beforeEach(() => vi.useRealTimers());
+  const record = PlanRecordSchema.parse(planResponse);
+
+  it('reads GET /api/plans under the base URL and returns the list as the server sent it', async () => {
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify({ plans: [record, { ...record, id: 2, weekStart: '2026-11-16' }] }), { status: 200 }));
+    const r = await createApi({ baseUrl: 'https://server.example.com', fetchFn: fetchFn as unknown as typeof fetch }).getPlans();
+    const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://server.example.com/api/plans');
+    expect(init.method).toBe('GET');
+    expect(r.ok && r.value.map((p) => p.id)).toEqual([1, 2]);
+  });
+
+  it('gives an empty list for { plans: [] }', async () => {
+    expect(await createApi({ fetchFn: delayedFetch(0, 200, { plans: [] }) }).getPlans()).toEqual({ ok: true, value: [] });
+  });
+
+  it('applies the same timeout as the other reads', async () => {
+    vi.useFakeTimers();
+    const call = watch(createApi({ fetchFn: delayedFetch(10 * 60_000, 200, null) }).getPlans());
+    await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+    expect(call.value).toEqual({ ok: false, failure: { kind: 'timeout' } });
+  });
+
+  it('gives a network failure when nothing can be reached', async () => {
+    const fetchFn = vi.fn(async () => { throw new TypeError('failed to fetch'); });
+    expect(await createApi({ fetchFn: fetchFn as unknown as typeof fetch }).getPlans()).toEqual({ ok: false, failure: { kind: 'network' } });
+  });
+
+  it('gives the server error it sent, and "unexpected response" for the wrong shape', async () => {
+    const failed = await createApi({ fetchFn: delayedFetch(0, 500, { error: 'server_error', message: 'Something went wrong.' }) }).getPlans();
+    expect(failed).toEqual({ ok: false, failure: { kind: 'api', error: { error: 'server_error', message: 'Something went wrong.' } } });
+    for (const wrong of [null, {}, record, { plans: [{ ...record, weekStart: undefined }] }, { plans: 'none' }]) {
+      const r = await createApi({ fetchFn: delayedFetch(0, 200, wrong) }).getPlans();
+      expect(r.ok, JSON.stringify(wrong)).toBe(false);
+    }
+  });
+});

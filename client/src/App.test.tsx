@@ -26,11 +26,11 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
 const week = () => (screen.getByLabelText(/week of your plan/i) as HTMLInputElement).value;
 
 // Renders the app with a fake API and waits for the first load of the saved plan to settle.
-async function open(saved: ReturnType<typeof planRecord> | null, post?: Parameters<typeof fakeApi>[1]) {
+async function open(saved: ReturnType<typeof planRecord> | ReturnType<typeof planRecord>[] | null, post?: Parameters<typeof fakeApi>[1]) {
   const api = fakeApi(saved, post);
   const user = userEvent.setup();
   render(<App api={api} />);
-  if (saved) await screen.findByRole('region', { name: 'Your plan' });
+  if (saved && (!Array.isArray(saved) || saved.length > 0)) await screen.findByRole('region', { name: 'Your plan' });
   else await screen.findByRole('button', { name: /build my plan/i });
   return { api, user };
 }
@@ -38,7 +38,8 @@ async function open(saved: ReturnType<typeof planRecord> | null, post?: Paramete
 describe('App: reload', () => {
   it('shows the saved plan from GET /api/plan without calling the coach @spec(plan-storage/reload-without-a-coach-call/reload-shows-the-same-plan)', async () => {
     const { api } = await open(pastedRecord);
-    expect(api.getPlan).toHaveBeenCalledTimes(1);
+    expect(api.getPlans).toHaveBeenCalledTimes(1);
+    expect(api.getPlan).not.toHaveBeenCalled(); // the client reads the list, never the single plan
     expect(api.postPlan).not.toHaveBeenCalled();
     expect(within(screen.getByRole('region', { name: 'Your plan' })).getByText('Week 3 of your running plan')).toBeTruthy();
   });
@@ -50,7 +51,7 @@ describe('App: reload', () => {
   });
 
   it('says the saved plan could not be loaded, and still lets the athlete build one', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(await screen.findByText(/could not load your saved plan/i)).toBeTruthy();
     expect(build()).toBeTruthy();
@@ -198,19 +199,19 @@ describe('App: waiting', () => {
 
 // Task 2.1: the page is two views (plan, form) on one page, and a start state while the saved plan is read.
 describe('App: start state', () => {
-  const pending = () => { let resolve!: (v: ReturnType<typeof ok<typeof pastedRecord | null>>) => void; const p = new Promise<ReturnType<typeof ok<typeof pastedRecord | null>>>((r) => { resolve = r; }); return { p, resolve }; };
+  const pending = () => { let resolve!: (v: ReturnType<typeof ok<(typeof pastedRecord)[]>>) => void; const p = new Promise<ReturnType<typeof ok<(typeof pastedRecord)[]>>>((r) => { resolve = r; }); return { p, resolve }; };
 
   it('shows only "Loading your saved plan…" until the read ends @spec(app-views/start-state/loading-before-the-read-ends)', async () => {
     const gate = pending();
-    const api = { getPlan: vi.fn(() => gate.p), deletePlan: vi.fn(), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(() => gate.p), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(screen.getByRole('status').textContent).toBe('Loading your saved plan…');
     expect(planRegion()).toBeNull();
     expect(screen.queryByRole('button', { name: /build my plan/i })).toBeNull();
     expect(screen.queryByLabelText(/goal/i)).toBeNull();
-    await act(async () => { gate.resolve(ok(pastedRecord)); });
+    await act(async () => { gate.resolve(ok([pastedRecord])); });
     expect(await screen.findByRole('region', { name: 'Your plan' })).toBeTruthy();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByText('Loading your saved plan…')).toBeNull(); // the card's own (empty) status region is not the loading line
   });
 
   it('opens the plan view, without the form, when a plan is saved @spec(app-views/start-state/a-saved-plan-opens-the-plan-view)', async () => {
@@ -229,7 +230,7 @@ describe('App: start state', () => {
   });
 
   it('opens the form with the failed-read message when the read fails @spec(app-views/start-state/a-failed-read-opens-the-form-view-with-a-message)', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     expect(await screen.findByText('Could not load your saved plan. You can still build a new one.')).toBeTruthy();
     expect(build()).toBeTruthy();
@@ -237,7 +238,7 @@ describe('App: start state', () => {
   });
 
   it('drops the failed-read message once the athlete builds a plan and presses "New plan" @spec(app-views/start-state/the-failed-read-message-does-not-follow-the-athlete)', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn(async () => ok(planResponse)) };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn(async () => ok(planResponse)) };
     const user = userEvent.setup();
     render(<App api={api} />);
     await screen.findByText(/could not load your saved plan/i);
@@ -276,7 +277,8 @@ describe('App: moving between views', () => {
     expect(within(screen.getByRole('region', { name: 'Your plan' })).getByText('Week 3 of your running plan')).toBeTruthy();
     expect(screen.queryByLabelText(/goal/i)).toBeNull();
     expect(api.postPlan).not.toHaveBeenCalled();
-    expect(api.getPlan).toHaveBeenCalledTimes(1);
+    expect(api.getPlans).toHaveBeenCalledTimes(1);
+    expect(api.getPlan).not.toHaveBeenCalled(); // the client reads the list, never the single plan
   });
 
   it('prefills from the saved plan, not from a failed attempt or anything typed @spec(app-views/moving-between-views/plan-next-week-uses-the-saved-plan)', async () => {
@@ -466,8 +468,8 @@ describe('App: states look like the design system', () => {
   it('shows the loading, building and waking lines as status messages on the soft surface @spec(messages-and-states/loading-building-and-waking-states/building)', async () => {
     const api = fakeApi(pastedRecord, () => new Promise(() => {}));
     let release!: () => void;
-    const gate = new Promise<ReturnType<typeof ok<typeof pastedRecord>>>((r) => { release = () => r(ok(pastedRecord)); });
-    const slow = { getPlan: vi.fn(() => gate), deletePlan: vi.fn(), postPlan: api.postPlan };
+    const gate = new Promise<ReturnType<typeof ok<(typeof pastedRecord)[]>>>((r) => { release = () => r(ok([pastedRecord])); });
+    const slow = { getPlan: vi.fn(), getPlans: vi.fn(() => gate), deletePlan: vi.fn(), postPlan: api.postPlan };
     render(<App api={slow} />);
     const loading = screen.getByRole('status');
     expect(loading.textContent).toBe('Loading your saved plan…');
@@ -514,7 +516,7 @@ describe('App: states look like the design system', () => {
   });
 
   it('shows the failed-read message in the soft style, not as an alert', async () => {
-    const api = { getPlan: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(async () => ({ ok: false as const, failure: { kind: 'network' as const } })), deletePlan: vi.fn(), postPlan: vi.fn() };
     render(<App api={api} />);
     const note = await screen.findByText('Could not load your saved plan. You can still build a new one.');
     expect(classesOf(note.closest('[data-slot="alert"]') as HTMLElement)).toContain('bg-secondary');
@@ -730,7 +732,7 @@ describe('App: the delete button', () => {
   });
 
   it('is not offered while the saved plan loads @spec(plan-deletion/delete-button-with-a-confirmation/button-is-offered-with-a-plan)', () => {
-    const api = { getPlan: vi.fn(() => new Promise<never>(() => {})), postPlan: vi.fn(), deletePlan: vi.fn() };
+    const api = { getPlan: vi.fn(), getPlans: vi.fn(() => new Promise<never>(() => {})), postPlan: vi.fn(), deletePlan: vi.fn() };
     render(<App api={api} />);
     expect(screen.getByRole('status').textContent).toMatch(/loading your saved plan/i);
     expect(screen.queryByRole('button', { name: 'Delete this plan' })).toBeNull();
@@ -809,17 +811,19 @@ describe('App: deleting the shown plan', () => {
     expect(api.postPlan).not.toHaveBeenCalled();
   });
 
-  it('does not bring an older stored plan back until the page is reloaded @spec(plan-deletion/delete-button-with-a-confirmation/an-older-plan-can-remain-stored)', async () => {
-    const { api, user } = await open(pastedRecord, async () => ok({ ...planResponse, id: 9 }));
+  it('shows an older stored plan at once, with the status line naming both weeks, and reads nothing again @spec(plan-deletion/delete-button-with-a-confirmation/an-older-plan-can-remain-stored)', async () => {
+    const older = { ...pastedRecord, id: 3, weekStart: '2026-11-09' };
+    const { api, user } = await open(older, async () => ok({ ...planResponse, id: 9, weekStart: '2026-11-16' }));
     await user.click(nextWeek());
     await user.click(build());
     await screen.findByRole('region', { name: 'Your plan' });
     await ask(user);
     await user.click(yes());
-    await screen.findByRole('heading', { level: 2, name: 'New plan' });
-    expect(planRegion()).toBeNull();
-    expect(screen.queryByRole('button', { name: 'My plan' })).toBeNull(); // neither the deleted plan nor the older one can be opened
-    expect(api.getPlan).toHaveBeenCalledTimes(1); // the older plan is read again only by a reload
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Deleted the plan for the week of 16 Nov. Showing the week of 9 Nov.'));
+    expect(planRegion()).not.toBeNull(); // the older plan is shown, no empty form
+    expect(screen.queryByRole('heading', { level: 2, name: 'New plan' })).toBeNull();
+    expect(api.getPlans).toHaveBeenCalledTimes(1); // nothing is read again
+    expect(api.getPlan).not.toHaveBeenCalled();
   });
 
   it('treats a plan that is already gone (404) as deleted @spec(plan-deletion/delete-button-with-a-confirmation/a-plan-that-is-already-gone-counts-as-deleted)', async () => {

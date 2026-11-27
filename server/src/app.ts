@@ -1,5 +1,5 @@
 import express, { type ErrorRequestHandler } from 'express';
-import type { ApiError } from 'shared';
+import type { ApiError, PlansResponse } from 'shared';
 import { generatePlan, type GenerateDeps } from './generate-plan.js';
 import { logError } from './log.js';
 import { todayUtc, validateOnboarding, validateWeekStart } from 'shared';
@@ -92,6 +92,20 @@ export function createApp(deps?: AppDeps) {
       res.json(await deps.store.latest());
     } catch (err) {
       logError('reading the latest plan failed', err);
+      sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
+    }
+  });
+
+  // Every stored plan, oldest week first, as { plans }. Never calls the coach and never touches the cap.
+  app.get('/api/plans', async (_req, res) => {
+    if (!deps) {
+      return sendError(res, 500, { error: 'server_error', message: 'The server is not configured.' });
+    }
+    try {
+      const body: PlansResponse = { plans: await deps.store.list() };
+      res.json(body);
+    } catch (err) {
+      logError('listing the plans failed', err);
       sendError(res, 500, { error: 'server_error', message: 'Something went wrong.' });
     }
   });

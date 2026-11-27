@@ -60,6 +60,9 @@ export const PlanRecordSchema = z.object({
 
 export const PlanResponseSchema = PlanRecordSchema.extend({ remainingCallsToday: z.number().int() });
 
+// GET /api/plans: every stored plan, oldest week first (one per week).
+export const PlansResponseSchema = z.object({ plans: z.array(PlanRecordSchema) });
+
 export const ApiErrorSchema = z.object({
   error: z.enum([
     'validation_error',
@@ -84,6 +87,7 @@ export type Plan = z.infer<typeof PlanSchema>;
 export type CoachResponse = z.infer<typeof CoachResponseSchema>;
 export type PlanRecord = z.infer<typeof PlanRecordSchema>;
 export type PlanResponse = z.infer<typeof PlanResponseSchema>;
+export type PlansResponse = z.infer<typeof PlansResponseSchema>;
 export type ApiError = z.infer<typeof ApiErrorSchema>;
 
 // The onboarding rules live here, not in the server, so the form and the API check the same thing (task 6.2).

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { ZodType } from 'zod';
 import {
   DaySchema, LevelSchema, OnboardingSchema, SessionSchema, PlanDaySchema, PlanSchema,
-  CoachResponseSchema, PlanRecordSchema, PlanResponseSchema, ApiErrorSchema,
+  CoachResponseSchema, PlanRecordSchema, PlanResponseSchema, PlansResponseSchema, ApiErrorSchema,
 } from './index.js';
 
 const session = { discipline: 'running', description: 'Easy 5 km', intensity: 'easy', source: 'athlete' };
@@ -28,6 +28,7 @@ const cases: [string, ZodType, unknown, unknown][] = [
     { understoodRunning: [], plan }],
   ['PlanRecord', PlanRecordSchema, record, { ...record, id: 'one' }],
   ['PlanResponse', PlanResponseSchema, { ...record, remainingCallsToday: 19 }, record],
+  ['PlansResponse', PlansResponseSchema, { plans: [record, { ...record, id: 2, weekStart: '2026-11-09' }] }, { plans: [{ ...record, weekStart: undefined }] }],
   ['ApiError', ApiErrorSchema,
     { error: 'validation_error', message: 'Bad', fields: { goal: 'required' }, remainingCallsToday: 3 },
     { error: 'teapot', message: 'Bad' }],
@@ -74,5 +75,15 @@ describe('plan week', () => {
 describe('not_found', () => {
   it('is an accepted error code', () => {
     expect(ApiErrorSchema.safeParse({ error: 'not_found', message: 'There is no such plan.' }).success).toBe(true);
+  });
+});
+
+// Task 1.4 (coach-plan-history): the list the server returns.
+describe('PlansResponse', () => {
+  it('accepts an empty list, refuses a missing list and a record without its week', () => {
+    expect(PlansResponseSchema.safeParse({ plans: [] }).success).toBe(true);
+    expect(PlansResponseSchema.safeParse({}).success).toBe(false);
+    expect(PlansResponseSchema.safeParse(null).success).toBe(false);
+    expect(PlansResponseSchema.safeParse({ plans: [{ id: 1, plan, onboarding, createdAt: record.createdAt }] }).success).toBe(false);
   });
 });

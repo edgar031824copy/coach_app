@@ -1,4 +1,4 @@
-import { ApiErrorSchema, PlanRecordSchema, PlanResponseSchema, type ApiError, type Onboarding, type PlanRecord, type PlanResponse } from 'shared';
+import { ApiErrorSchema, PlanRecordSchema, PlanResponseSchema, PlansResponseSchema, type ApiError, type Onboarding, type PlanRecord, type PlanResponse } from 'shared';
 
 
 // A request gives up after 120 s 🔶 (design.md Decision 7): a cold Render wake (about 60 s) plus the coach's own
@@ -53,6 +53,11 @@ export function createApi({ baseUrl = '', fetchFn = (...args) => fetch(...args),
       call('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...onboarding, weekStart }) }, PlanResponseSchema),
     // The latest saved plan, or null before the first one; never calls the coach.
     getPlan: (): Promise<ApiResult<PlanRecord | null>> => call('/api/plan', { method: 'GET' }, PlanRecordSchema.nullable()),
+    // Every stored plan, oldest week first (one per week); never calls the coach.
+    getPlans: async (): Promise<ApiResult<PlanRecord[]>> => {
+      const r = await call('/api/plans', { method: 'GET' }, PlansResponseSchema);
+      return r.ok ? { ok: true, value: r.value.plans } : r;
+    },
     // Deletes one stored plan by its id. The success answer is an empty 204, so a body is the wrong shape.
     deletePlan: (id: number): Promise<ApiResult<undefined>> => call(`/api/plan/${id}`, { method: 'DELETE' }, emptyAnswer, 204),
   };

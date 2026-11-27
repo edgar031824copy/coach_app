@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { counts, resetDb } from './db.js';
-import { CLIENT_ORIGIN, E2E_DATABASE_URL } from './env.js';
+import { counts, planRows, resetDb } from './db.js';
+import { CLIENT_ORIGIN, E2E_DATABASE_URL, SERVER_PORT } from './env.js';
+import { fillForm } from './ui-helpers.js';
 
 // The main journey in a real browser, against the built server (fake coach, real Postgres) and the client.
 // Each test starts from an empty database; the stack's daily cap is 3 calls.
@@ -128,6 +129,63 @@ test('a deleted plan is gone from the database and after a reload; an earlier pl
   await page.reload();
   await expect(page.getByRole('button', { name: 'Build my plan' })).toBeVisible();
   await expect(plan(page)).toHaveCount(0);
+});
+
+test('two weeks, the switcher, a rebuild with its warning, a deletion that lands on the nearest week, and the last plan @spec(stored-plans/the-plan-shown-on-start/the-current-week-opens) @spec(stored-plans/moving-between-weeks/earlier-and-later-move-one-stored-week) @spec(stored-plans/a-warning-before-a-plan-replaces-another/new-plan-for-a-week-that-has-a-plan) @spec(plan-week/one-plan-per-week/rebuilding-a-week-replaces-its-plan) @spec(plan-deletion/delete-button-with-a-confirmation/the-next-later-week-is-shown-first) @spec(stored-plans/listing-the-stored-plans/a-rebuilt-week-is-listed-once)', async ({ page }) => {
+  const thisWeek = mondayLabel(); const nextWeek = mondayLabel(1); // taken before the page builds them
+  const listed = async () => ((await (await page.request.get(`http://localhost:${SERVER_PORT}/api/plans`)).json()) as { plans: { id: number; weekStart: string }[] }).plans;
+
+  // Two weeks: this week's plan, then next week's.
+  await buildFirstPlan(page, 'Week 1: Mon 5 km easy, Wed 8 km tempo. Week 2: Tue 6 km easy; Thu 10 km long');
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await expect(plan(page)).not.toContainText(/ · \d+ of \d+/); // one plan: no switcher yet
+  await page.getByRole('button', { name: 'Plan next week' }).click();
+  await page.getByRole('button', { name: 'Build my plan' }).click();
+  await expect(plan(page)).toContainText('Week 2 of your running plan');
+  await expect(plan(page)).toContainText(`Week of ${nextWeek} · 2 of 2`);
+  const [first, second] = await planRows();
+  expect(await planRows()).toEqual([{ id: first!.id, week: first!.week }, { id: second!.id, week: second!.week }]);
+  expect(await counts()).toEqual({ plans: 2, calls: 2 });
+
+  // The switcher moves between them and sends nothing.
+  await page.getByRole('button', { name: 'Earlier plan' }).click();
+  await expect(plan(page)).toContainText(`Week of ${thisWeek} · 1 of 2`);
+  await expect(plan(page)).toContainText('Week 1 of your running plan');
+  await page.getByRole('button', { name: 'Later plan' }).click();
+  await expect(plan(page)).toContainText(`Week of ${nextWeek} · 2 of 2`);
+  expect(await counts()).toEqual({ plans: 2, calls: 2 });
+
+  // A reload opens the plan of the current week, although next week's was made more recently.
+  await page.reload();
+  await expect(plan(page)).toContainText(`Week of ${thisWeek} · 1 of 2`);
+
+  // "New plan" is for the current week, which has a plan: the form says so before anything is sent. Building replaces it.
+  await page.getByRole('button', { name: 'New plan' }).click();
+  await expect(page.getByRole('note')).toHaveText(`You already have a plan for the week of ${thisWeek}. Building a new one replaces it.`);
+  expect(await counts()).toEqual({ plans: 2, calls: 2 });
+  await fillForm(page);
+  await page.getByRole('button', { name: 'Build my plan' }).click();
+  await expect(plan(page)).toContainText(`Week of ${thisWeek} · 1 of 2`); // still two plans
+  await expect(plan(page)).not.toContainText('Week 1 of your running plan'); // the new plan has no pasted week: it is the new one
+  expect(await counts()).toEqual({ plans: 2, calls: 3 });
+  expect(await planRows()).toEqual([{ id: first!.id, week: first!.week }, { id: second!.id, week: second!.week }]); // the same two rows, the same ids
+  expect((await listed()).map((p) => p.id)).toEqual([first!.id, second!.id]); // the week is listed once
+
+  // Deleting this week's plan lands on the next later week, with the status line and the heading focused.
+  await deleteShownPlan(page);
+  await expect(plan(page)).toContainText('Week 2 of your running plan');
+  await expect(plan(page).getByRole('status')).toHaveText(`Deleted the plan for the week of ${thisWeek}. Showing the week of ${nextWeek}.`);
+  await expect(page.getByRole('heading', { level: 2, name: 'Your plan' })).toBeFocused();
+  await expect(plan(page)).not.toContainText(/ · \d+ of \d+/); // one plan left: no switcher
+  expect(await planRows()).toEqual([{ id: second!.id, week: second!.week }]);
+  expect((await listed()).map((p) => p.id)).toEqual([second!.id]);
+
+  // Deleting the last plan opens the empty form; the cap is not refunded.
+  await deleteShownPlan(page);
+  await expect(page.getByRole('heading', { level: 2, name: 'New plan' })).toBeFocused();
+  await expect(page.getByLabel('Goal')).toHaveValue('');
+  expect(await counts()).toEqual({ plans: 0, calls: 3 });
+  expect(await listed()).toEqual([]);
 });
 
 test('after the daily limit the client says so, with no retry, and nothing more is called @spec(cost-cap/daily-cap/cap-reached)', async ({ page }) => {

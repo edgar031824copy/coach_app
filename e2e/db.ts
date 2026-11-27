@@ -22,3 +22,10 @@ export const counts = () =>
     const calls = await db.query('select coalesce(sum(calls), 0)::int as n from coach_call_counts');
     return { plans: plans.rows[0].n as number, calls: calls.rows[0].n as number };
   });
+
+// The stored plans as the database holds them, oldest week first: the ids and weeks, to show what a rebuild or a deletion did.
+export const planRows = () =>
+  withDb(async (db) => {
+    const { rows } = await db.query("select id, to_char(week_start, 'YYYY-MM-DD') as week from plans order by week_start");
+    return rows.map((r) => ({ id: Number(r.id), week: r.week as string }));
+  });

@@ -7,17 +7,20 @@ import { onboardingFixture, planFixture } from '../../test/fixtures.js';
 const WEEK = '2026-11-23'; // a Monday
 let db: Awaited<ReturnType<typeof migratedClient>>;
 beforeEach(async () => {
+  seeded = 0;
   db = await migratedClient();
 });
 afterEach(() => db.cleanup());
 
 const count = async () => (await db.client.query('select count(*)::int as n from plans')).rows[0]?.n;
-// Seeds a row with an exact created_at, for the ordering tests.
+// Seeds a row with an exact created_at, for the ordering tests. One plan per week (migration 003): each seed names its own week.
+let seeded = 0;
 const seed = (goal: string, createdAt: string) =>
-  db.client.query('insert into plans(plan, onboarding, created_at) values ($1, $2, $3) returning id', [
+  db.client.query('insert into plans(plan, onboarding, created_at, week_start) values ($1, $2, $3, $4) returning id', [
     JSON.stringify({ ...planFixture, recommendations: [goal] }),
     JSON.stringify(onboardingFixture),
     createdAt,
+    new Date(Date.UTC(2026, 9, 5 + 7 * seeded++)).toISOString().slice(0, 10),
   ]);
 
 describe('plan store: save', () => {
@@ -71,7 +74,7 @@ describe('plan store: latest', () => {
 
   it('after two saves through the store, returns the second and keeps the first stored', async () => {
     const store = createPlanStore(db.client);
-    await store.save({ ...planFixture, recommendations: ['one'] }, onboardingFixture, WEEK);
+    await store.save({ ...planFixture, recommendations: ['one'] }, onboardingFixture, '2026-11-16');
     const second = await store.save({ ...planFixture, recommendations: ['two'] }, onboardingFixture, WEEK);
     expect((await store.latest())?.id).toBe(second.id);
     expect(await count()).toBe(2);

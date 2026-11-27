@@ -43,7 +43,9 @@ describe('migration 002: the week of earlier plans', () => {
     await old('leap day', '2024-02-29T12:00:00Z'); // a Thursday: the week of 26 Feb 2024
     const before = (await db.client.query('select id, plan, onboarding, created_at from plans order by id')).rows;
 
-    const applied = await migrate(db.client, MIGRATIONS);
+    // Only up to 002: this migration loses no plan. The later merge of plans of one week is migration 003 (migration-003.test.ts).
+    copyFileSync(join(MIGRATIONS, '002_plan_week.sql'), join(onlyFirst, '002_plan_week.sql'));
+    const applied = await migrate(db.client, onlyFirst);
     expect(applied).toEqual(['002_plan_week.sql']);
 
     const { rows } = await db.client.query(
@@ -122,8 +124,8 @@ describe('plan store: delete', () => {
 
   it('removes the row and says so, and says no the second time', async () => {
     const store = createPlanStore(db.client);
-    const a = await store.save({ ...planFixture, recommendations: ['a'] }, onboardingFixture, WEEK);
-    const b = await store.save({ ...planFixture, recommendations: ['b'] }, onboardingFixture, WEEK);
+    const a = await store.save({ ...planFixture, recommendations: ['a'] }, onboardingFixture, '2026-11-09');
+    const b = await store.save({ ...planFixture, recommendations: ['b'] }, onboardingFixture, '2026-11-16');
     const c = await store.save({ ...planFixture, recommendations: ['c'] }, onboardingFixture, WEEK);
     expect(await store.delete(c.id)).toBe(true);
     expect(await store.delete(c.id)).toBe(false);

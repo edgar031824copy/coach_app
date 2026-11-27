@@ -59,7 +59,7 @@ describe('GET /api/plan', () => {
   it('shows the new plan after a second submission and keeps the earlier one stored @spec(plan-storage/submitting-again-replaces-the-shown-plan/second-submission)', async () => {
     h = await appHarness({ coach });
     const first = await h.post(body);
-    const second = await h.post({ ...body, goal: 'Run a 10k' });
+    const second = await h.post({ ...body, goal: 'Run a 10k', weekStart: '2026-11-30' }); // until task 1.3 a second build of one week would replace the first
     expect(second.body.id).not.toBe(first.body.id);
     const shown = await h.get();
     expect(shown.body.id).toBe(second.body.id);

@@ -1,10 +1,10 @@
 ## 1. Server and shared (first build PR)
 
-- [ ] 1.1 Add migration 003 (the only task that changes production data).
+- [x] 1.1 Add migration 003 (the only task that changes production data).
   - Done when: `server/migrations/003_one_plan_per_week.sql` copies the plans that lose to a newer plan of the same week into `plans_merged`, deletes them, and creates the unique index `plans_week_start_key` on `week_start` (design Decision 1); the migration is its own commit, so the owner can look at exactly what runs on production before he merges the PR that carries it.
   - Test plan: against real Postgres in a throwaway schema: run 001 and 002, insert three plans of one week (one pair with equal creation times) and one plan of another week, run 003: the newest (the highest id on a tie) and the single plan remain with unchanged content, `plans_merged` holds exactly the removed rows, a second week with a single plan is untouched; then execute the file's SQL a second time by hand (the runner never does) and nothing changes; a second insert of an existing week is refused by the index; mutation checks on the comparison (oldest kept, tie going to the lowest id), the missing index, a missing copy.
   - Scenarios: `plan-week/one-plan-per-week/the-migration-keeps-the-newest-plan-of-a-week`, `plan-week/one-plan-per-week/the-migration-breaks-a-tie-with-the-highest-id`, `plan-week/one-plan-per-week/the-migration-can-run-again`.
-- [ ] 1.2 Make the store save by week and list.
+- [x] 1.2 Make the store save by week and list.
   - Done when: `PlanStore.save` is the `on conflict (week_start) do update` upsert of Decision 2 (id kept, `created_at` set to now, plan and onboarding replaced); a new `PlanStore.list(): Promise<PlanRecord[]>` returns every record by `week_start` ascending; every `PlanStore` test double has `list`; every existing test stays green.
   - Test plan: store tests against real Postgres: a save for a new week adds a row; a save for a stored week keeps the id, moves `created_at`, replaces plan and onboarding and leaves the other weeks as they were; two saves of one week on two connections at once leave exactly one row; `list` order; mutation checks (the id not kept, `created_at` not moving, an insert that adds a row, descending order).
   - Scenarios: `plan-week/one-plan-per-week/the-first-plan-of-a-week-is-added`, `plan-week/one-plan-per-week/rebuilding-a-week-replaces-its-plan`, `plan-week/one-plan-per-week/two-builds-at-once-leave-one-plan`, `plan-week/one-plan-per-week/other-weeks-are-untouched`.

@@ -75,6 +75,9 @@ describe('GET /api/plan', () => {
       async latest() {
         throw new Error('database unreachable: secret detail');
       },
+      async list() {
+        throw new Error('unused');
+      },
       async delete() {
         throw new Error('unused');
       },

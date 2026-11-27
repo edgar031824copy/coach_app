@@ -120,7 +120,7 @@ describe('DELETE /api/plan/:id', () => {
 
   it('turns a store failure into the usual 500 without any detail', async () => {
     const { coach } = setup();
-    h = await appHarness({ coach, store: { async save() { throw new Error('unused'); }, async latest() { return null; }, async delete() { throw new Error('database unreachable: secret detail'); } } });
+    h = await appHarness({ coach, store: { async save() { throw new Error('unused'); }, async latest() { return null; }, async list() { throw new Error('unused'); }, async delete() { throw new Error('database unreachable: secret detail'); } } });
     const res = await h.del(1);
     expect(res.status).toBe(500);
     expect(ApiErrorSchema.parse(res.body)).toEqual({ error: 'server_error', message: 'Something went wrong.' });

@@ -54,7 +54,7 @@
   - Done when: `docs/design-system.md` lists the switcher pattern, the two chevron icons and the note; the bundle size and the size of the list response (a plan record in bytes) are measured by hand and compared with the 117,682 at the end of the last change; ADR 0008 ("plans are keyed by calendar week") is written as Proposed, unless the owner struck this at G1.
   - Test plan: the documentation test; read the document against the code.
   - Scenarios: none new.
-- [ ] 3.4 Manual checks on the live app, gate G4 and archive.
+- [x] 3.4 Manual checks on the live app, gate G4 and archive.
   - Done when: after the deploy the owner opens the live app, sees the plans of the week switcher (the three old rows of 2026-11-16 are now one), builds and rebuilds a week, deletes and reloads, and says whether it is good, with a note in `docs/` and no URLs; the owner looks at the production table himself (I never read or run anything against production) and sees one plan per week and the removed rows in `plans_merged`; the manual check includes a screen reader pass over the status line after a deletion, and notes that the timeout hints say "reload" while a plan of another week is found with the switcher; `scripts/trace` covers every scenario; `/opsx:verify` has no critical finding; the change is archived.
   - Test plan: the manual run recorded; `scripts/trace`; the CI result.
   - Scenarios: all scenarios (traceability).

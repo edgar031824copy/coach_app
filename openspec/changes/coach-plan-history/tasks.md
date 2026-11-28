@@ -42,15 +42,15 @@
 
 ## 3. Checks, documentation, and finish (last PR)
 
-- [ ] 3.1 Extend the end-to-end journey.
+- [x] 3.1 Extend the end-to-end journey.
   - Done when: on the real stack the journey builds two weeks and moves between them with the switcher; rebuilds one week and sees the warning first, then one plan for that week in the database (the count and the id) and the new plan shown; deletes a plan and lands on the nearest week with the status line, the row gone and `GET /api/plans` not listing it; deletes the last plan and sees the empty form; a reload opens the current week's plan. The earlier delete journey is updated for the new landing (tags kept).
   - Test plan: run `npm run e2e -w e2e` locally and in CI; mutate the replace (an insert instead of the upsert) and the nearest choice to see the journey fail.
   - Scenarios: `plan-deletion/delete-button-with-a-confirmation/a-reload-does-not-show-the-deleted-plan`; the journey also carries the ids of 2.2 to 2.5 where it exercises them.
-- [ ] 3.2 Add the switcher, the status line and the note to the shared interface checks.
+- [x] 3.2 Add the switcher, the status line and the note to the shared interface checks.
   - Done when: states for the plan view with several plans (the switcher), after a deletion (the status line) and the form with the replace note are in `e2e/ui-states.ts`, so layout (360, 768, 1280), target size, reduced motion and axe cover them; a focus-ring check covers the two switcher buttons and one at an end (still focusable); at 360 px the label "Week of 28 Dec · 12 of 12" and the two buttons fit inside the card beside the trash button.
   - Test plan: run the Playwright suite locally and in CI; mutate a target size and a ring to see the checks fail.
   - Scenarios: none new (the E1b scenarios for layout, targets, focus and axe keep their tags and now cover these states).
-- [ ] 3.3 Update the documentation and record the size.
+- [x] 3.3 Update the documentation and record the size.
   - Done when: `docs/design-system.md` lists the switcher pattern, the two chevron icons and the note; the bundle size and the size of the list response (a plan record in bytes) are measured by hand and compared with the 117,682 at the end of the last change; ADR 0008 ("plans are keyed by calendar week") is written as Proposed, unless the owner struck this at G1.
   - Test plan: the documentation test; read the document against the code.
   - Scenarios: none new.

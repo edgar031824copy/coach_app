@@ -37,6 +37,17 @@ export function savedPlan(options: { longText?: boolean } = {}) {
   };
 }
 
+// Several stored plans, oldest week first: `count` consecutive weeks from the Monday `first`, made in the same order (so the
+// newest week is also the one made most recently, and none of them is the current week unless the clock says so).
+export function savedPlans(count: number, first = '2026-11-02') {
+  return Array.from({ length: count }, (_, i) => ({
+    ...savedPlan(),
+    id: i + 1,
+    weekStart: new Date(Date.UTC(+first.slice(0, 4), +first.slice(5, 7) - 1, +first.slice(8, 10) + 7 * i)).toISOString().slice(0, 10),
+    createdAt: new Date(Date.UTC(2026, 10, 1 + i, 10)).toISOString(),
+  }));
+}
+
 const json = (route: Route, status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
 // What GET /api/plans answers (the page reads the list). `null` is "nothing saved", a record is one stored plan, an array is

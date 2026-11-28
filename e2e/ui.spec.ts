@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { resetDb } from './db.js';
-import { WIDTHS, mockSavedPlan, openAllParts, overflow, savedPlan, tabTo, targets } from './ui-helpers.js';
+import { WIDTHS, mockSavedPlan, openAllParts, overflow, savedPlan, savedPlans, tabTo, targets } from './ui-helpers.js';
 import { STATES } from './ui-states.js';
 
 // Interface checks that need a real browser: layout, target sizes, keyboard use and focus rings. The API is mocked with
@@ -25,7 +25,7 @@ for (const width of [360, 768] as const) {
   test.describe(`touch at ${width} px`, () => {
     test.use({ viewport: { width, height: 900 }, hasTouch: true, isMobile: true });
 
-    for (const name of ['the form, empty', 'the form with every optional part open', 'the form with errors', 'the plan view', 'a failure with Try again', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'a deletion that may have happened (no answer)']) {
+    for (const name of ['the form, empty', 'the form with every optional part open', 'the form with errors', 'the plan view', 'a failure with Try again', 'the plan view with several plans (the week switcher)', 'the plan view after a deletion (the status line)', 'the form with the replace note', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'a deletion that may have happened (no answer)']) {
       test(`every control is at least 44 by 44 in ${name} @spec(responsive-accessibility/touch-targets/target-size-with-touch)`, async ({ page }) => {
         await STATES.find((s) => s.name === name)!.open(page);
         expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'the browser must report a coarse pointer').toBe(true);
@@ -39,7 +39,7 @@ for (const width of [360, 768] as const) {
 test.describe('mouse at 1280 px', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  for (const name of ['the form, empty', 'the form with every optional part open', 'the form with errors', 'the plan view', 'a failure with Try again', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'a deletion that may have happened (no answer)']) {
+  for (const name of ['the form, empty', 'the form with every optional part open', 'the form with errors', 'the plan view', 'a failure with Try again', 'the plan view with several plans (the week switcher)', 'the plan view after a deletion (the status line)', 'the form with the replace note', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'a deletion that may have happened (no answer)']) {
     test(`every control is at least 36 high and 24 wide in ${name} @spec(responsive-accessibility/touch-targets/target-size-with-a-mouse)`, async ({ page }) => {
       await STATES.find((s) => s.name === name)!.open(page);
       expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches), 'the browser must report a fine pointer').toBe(true);
@@ -181,6 +181,39 @@ test('at 360 px the card header keeps the trash button inside the card beside th
   await inside(page.getByText(/Delete the plan for the week of/).boundingBox(), 'the question');
   await inside(page.getByRole('button', { name: 'Cancel' }).boundingBox(), 'Cancel');
   await inside(page.getByRole('button', { name: 'Delete plan' }).boundingBox(), 'Delete plan');
+});
+
+test('with several plans the two switcher buttons, also the one at an end, are focus stops with a visible ring @spec(responsive-accessibility/keyboard-use/focus-is-visible)', async ({ page }) => {
+  await mockSavedPlan(page, savedPlans(3)); // opens on the newest week: "Later plan" is at its end
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Later plan' })).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('heading', { level: 1 }).click(); // Tab starts from here
+  const stops = await focusRings(page, 'New plan');
+  expect(stops.map((s) => s.name)).toEqual(['button "Delete this plan"', 'button "Earlier plan"', 'button "Later plan"', 'button "Plan next week"', 'button "New plan"']);
+  expect(stops.filter((s) => !s.ok), JSON.stringify(stops)).toEqual([]);
+});
+
+test('at 360 px "Week of 28 Dec · 12 of 12" and the two buttons fit inside the card on one line @spec(responsive-accessibility/layout-at-every-width/no-horizontal-scroll)', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.clock.setFixedTime(new Date('2026-12-30T12:00:00Z')); // the week of 28 Dec is the current one, so the last plan opens
+  await mockSavedPlan(page, savedPlans(12, '2026-10-12'));
+  await page.goto('/');
+  const label = page.getByText('Week of 28 Dec · 12 of 12');
+  await expect(label).toBeVisible();
+  const card = (await page.getByRole('region', { name: 'Your plan' }).locator('> div').filter({ has: page.getByRole('heading', { level: 2, name: 'Your plan' }) }).boundingBox())!;
+  const l = (await label.boundingBox())!;
+  const earlier = (await page.getByRole('button', { name: 'Earlier plan' }).boundingBox())!;
+  const later = (await page.getByRole('button', { name: 'Later plan' }).boundingBox())!;
+  const trash = (await page.getByRole('button', { name: 'Delete this plan' }).boundingBox())!;
+  for (const [what, b] of [['label', l], ['Earlier plan', earlier], ['Later plan', later]] as const) {
+    expect(b.x, `${what}: left edge`).toBeGreaterThanOrEqual(card.x);
+    expect(b.x + b.width, `${what}: right edge`).toBeLessThanOrEqual(card.x + card.width);
+  }
+  expect(l.height, 'the label stays on one line').toBeLessThan(26);
+  expect(earlier.x + earlier.width, 'the arrows do not overlap the label').toBeLessThanOrEqual(l.x);
+  expect(l.x + l.width).toBeLessThanOrEqual(later.x);
+  expect(trash.y + trash.height, 'the trash button stays in the header, above the switcher').toBeLessThanOrEqual(earlier.y + 1);
+  expect(await overflow(page)).toBe(0);
 });
 
 test('the tab order follows the page from top to bottom @spec(responsive-accessibility/keyboard-use/focus-is-visible)', async ({ page }) => {

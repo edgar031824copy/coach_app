@@ -57,7 +57,7 @@ test.describe('on a phone, 360 by 740', () => {
 test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  for (const name of ['the form, empty', 'the form with every optional part open', 'the plan view', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'building the plan', 'a failure with Try again']) {
+  for (const name of ['the form, empty', 'the form with every optional part open', 'the plan view', 'the plan view with several plans (the week switcher)', 'the plan view after a deletion (the status line)', 'the plan view with the deletion confirmation', 'a failed deletion (the server says no)', 'building the plan', 'a failure with Try again']) {
     test(`shows no animation and no transition in ${name} @spec(responsive-accessibility/reduced-motion/reduced-motion-respected)`, async ({ page }) => {
       await STATES.find((s) => s.name === name)!.open(page);
       expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'the browser must report reduced motion').toBe(true);

@@ -9,7 +9,7 @@ Until `coach-plan-history` every build added a row to `plans`, so one week could
 
 ## Options considered
 
-- **One plan per calendar week, enforced by the database (chosen).** The Monday of the week (`week_start`) is the key. Rebuilding a week replaces its plan in one atomic upsert and keeps the row's id; a unique index makes a second plan for a week impossible. Migration 003 merged today's duplicates and copied what it removed to `plans_merged`.
+- **One plan per calendar week, enforced by the database (chosen).** The Monday of the week (`week_start`) is the key. Rebuilding a week replaces its plan in one atomic upsert and keeps the row's id; a unique index makes a second plan for a week impossible. Migration 003 merges today's duplicates (the newest plan of each week stays) and copies what it removes to `plans_merged`.
 - **A `superseded` flag that hides old rows:** rejected, it keeps the hidden state this change removes.
 - **Several plans per week, with a way to pick one:** rejected, there is no use for a second plan of the same week in a single-athlete coach, and every reader would have to choose.
 - **A plan history per week (versions):** rejected for now. The PRD's S1 "Plan history / adjustment log" is a different thing (what was suggested and done, E6); a version history of plans can be added later without changing this key.

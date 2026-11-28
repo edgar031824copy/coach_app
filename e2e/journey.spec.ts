@@ -144,7 +144,8 @@ test('two weeks, the switcher, a rebuild with its warning, a deletion that lands
   await expect(plan(page)).toContainText('Week 2 of your running plan');
   await expect(plan(page)).toContainText(`Week of ${nextWeek} · 2 of 2`);
   const [first, second] = await planRows();
-  expect(await planRows()).toEqual([{ id: first!.id, week: first!.week }, { id: second!.id, week: second!.week }]);
+  expect([first?.week, second?.week]).toEqual([expect.any(String), expect.any(String)]);
+  expect(first!.week < second!.week).toBe(true); // two different weeks, two rows
   expect(await counts()).toEqual({ plans: 2, calls: 2 });
 
   // The switcher moves between them and sends nothing.
